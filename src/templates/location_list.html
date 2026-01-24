@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Locations - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Locations</h1>
+    <a href="{{ url_for('locations.location_add') }}" class="button button-primary">Add New Location</a>
+</div>
+
+{% if locations %}
+<div class="tree-container">
+    <ul class="tree-root">
+        {% macro render_location(location, is_last=False, depth=0) %}
+        <li class="tree-item" data-item-id="{{ location.id }}" data-depth="{{ depth }}" data-is-last="{{ is_last }}">
+            <div class="tree-node">
+                <div class="tree-lines" data-depth="{{ depth }}"></div>
+                <button class="tree-toggle {% if not location.children %}tree-toggle-hidden{% endif %}" 
+                        data-tree-toggle="{{ location.id }}">
+                    {% if location.children %}▼{% endif %}
+                </button>
+                <a href="{{ url_for('locations.location_detail', id=location.id) }}" class="tree-name">{{ location.name }}</a>
+                <span class="tree-info">{{ get_total_books(location) }} book(s)</span>
+                <a href="{{ url_for('locations.location_detail', id=location.id) }}" class="button button-small button-secondary">View</a>
+            </div>
+            {% if location.children %}
+            <ul class="tree-children" data-tree-children="{{ location.id }}">
+                {% for child in location.children %}
+                    {{ render_location(child, loop.last, depth + 1) }}
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </li>
+        {% endmacro %}
+        
+        {% for location in locations %}
+            {% if not location.parent_id %}
+                {{ render_location(location, loop.last, 0) }}
+            {% endif %}
+        {% endfor %}
+    </ul>
+</div>
+
+{% else %}
+<div class="alert-info">
+    No locations found. <a href="{{ url_for('locations.location_add') }}" class="alert-link">Add your first location</a>.
+</div>
+{% endif %}
+
+<script src="{{ url_for('static', filename='js/tree.js') }}"></script>
+{% endblock %}

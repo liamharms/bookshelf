@@ -1,0 +1,31 @@
+{% macro book_card(copy) %}
+<a href="{{ url_for('books.copy_detail', id=copy.id) }}" class="book-card">
+    <div class="book-card-inner">
+        {% if copy.work.cover_url %}
+        <img src="{{ copy.work.cover_url }}" class="book-cover" alt="{{ copy.work.title }}">
+        {% else %}
+        <svg class="book-cover-placeholder" viewBox="0 0 100 120" fill="none">
+            <rect width="100" height="120" fill="var(--bg-hover)"/>
+            <rect x="10" y="15" width="80" height="2" fill="var(--border-color)"/>
+            <rect x="10" y="25" width="60" height="2" fill="var(--border-color)"/>
+            <rect x="10" y="35" width="70" height="2" fill="var(--border-color)"/>
+            <path d="M30 60 L50 80 L70 60" stroke="var(--border-color)" stroke-width="2" fill="none"/>
+        </svg>
+        {% endif %}
+        <div class="book-info-overlay">
+            <h4 class="book-title">{{ copy.work.title }}</h4>
+            <div class="book-authors">
+                {% for author in copy.work.authors %}
+                <span class="author-name">{{ author.primary_name }}</span>{% if not loop.last %}, {% endif %}
+                {% endfor %}
+            </div>
+            {% if copy.location %}
+            <div class="book-location">{{ copy.location.name }}</div>
+            {% endif %}
+            {% if copy.work.description %}
+            <p class="book-description">{{ copy.work.description }}</p>
+            {% endif %}
+        </div>
+    </div>
+</a>
+{% endmacro %}

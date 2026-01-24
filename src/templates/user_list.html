@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}users - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Users</h1>
+    <a href="{{ url_for('users.user_add') }}" class="btn btn-success">Add New User</a>
+</div>
+
+{% if users %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Owned Books</th>
+                <th>Borrowed Books</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.name }}</td>
+                <td>{{ user.owned_copies|length }} books</td>
+                <td>{{ user.borrowed_copies|length }} books</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ user.id }}">Delete</button>
+                    
+                    <!-- Delete Modal -->
+                    <div class="modal fade" id="deleteModal{{ user.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Confirm Delete</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    Are you sure you want to delete "{{ user.name }}"?
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <form action="{{ url_for('users.user_delete', id=user.id) }}" method="post">
+                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+    No users found. <a href="{{ url_for('users.user_add') }}">Add your first user</a>.
+</div>
+{% endif %}
+{% endblock %}

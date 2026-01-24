@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "macros.html" import book_card %}
+
+{% block content %}
+<div class="index-header">
+    <h1 class="index-title">Welcome to your Home Library</h1>
+    <p class="index-lead">Manage books, authors, and more.</p>
+    <div class="index-divider"></div>
+    <p class="index-description">You can add, edit, and organize your books, authors, and tags.</p>
+    <div class="index-actions">
+        <a href="{{ url_for('books.books') }}" class="button button-primary">View Books</a>
+        <a href="{{ url_for('books.book_add') }}" class="button button-secondary">Add New Book</a>
+    </div>
+</div>
+
+<div class="section-cards">
+    <div class="card">
+        <h5 class="card-title">Books</h5>
+        <p class="card-text">Manage your book collection.</p>
+        <a href="{{ url_for('books.books') }}" class="card-link">View Books</a>
+    </div>
+    <div class="card">
+        <h5 class="card-title">Authors</h5>
+        <p class="card-text">Manage your authors.</p>
+        <a href="{{ url_for('authors.author_list') }}" class="card-link">View Authors</a>
+    </div>
+    <div class="card">
+        <h5 class="card-title">Tags</h5>
+        <p class="card-text">Organize your books with tags.</p>
+        <a href="{{ url_for('tags.tag_list') }}" class="card-link">View Tags</a>
+    </div>
+    <div class="card">
+        <h5 class="card-title">Locations</h5>
+        <p class="card-text">Manage your book locations.</p>
+        <a href="{{ url_for('locations.location_list') }}" class="card-link">View Locations</a>
+    </div>
+</div>
+
+<div class="recent-section">
+    <h2 class="section-title">Recent Additions</h2>
+    <div class="book-grid">
+        {% for copy in books %}
+        {{ book_card(copy) }}
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

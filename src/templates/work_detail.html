@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}{{ work.title }} - {{ super() }}{% endblock %}
+
+{% block content %}
+
+<div class="row">
+    <div class="col-md-4">
+        <img src="{{ work.cover_url }}" class="mx-auto d-block img-fluid">
+        <hr>
+        <h1>{{ work.title }}</h1>
+        <a href="{{ url_for('books.work_edit', id=work.id) }}" class="btn btn-primary">Edit</a>
+        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">Delete</button>
+    </div>
+
+    <div class="card mb-4 col-md-8">
+        <div class="card-body">
+            <div class="mb-3">
+                <strong>ISBN:</strong> {{ work.isbn }}
+            </div>
+            
+            <div class="mb-3">
+                <strong>Authors:</strong>
+                {% for author in work.authors %}
+                    <a href="{{ url_for('authors.author_detail', id=author.id) }}" class="badge bg-primary text-decoration-none">{{ author.primary_name }}</a>
+                {% endfor %}
+            </div>
+            
+            <div class="mb-3">
+                <strong>Tags:</strong>
+                {% for tag in work.tags %}
+                    <a href="{{ url_for('tags.tag_detail', id=tag.id) }}" class="badge bg-secondary text-decoration-none">{{ tag.label }}</a>
+                {% endfor %}
+            </div>
+            
+            {% if work.description %}
+            <div class="mb-3">
+                <strong>Description:</strong>
+                <p class="mt-2">{{ work.description }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<a href="{{ url_for('books.work_list') }}" class="btn btn-secondary">Back to Works</a>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete "{{ work.title }}"?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('books.work_delete', id=work.id) }}" method="post">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

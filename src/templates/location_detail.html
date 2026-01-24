@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% from "macros.html" import book_card %}
+
+{% block title %}{{ location.name }} - {{ super() }}{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('locations.location_list') }}" class="button button-secondary detail-back-button">← Back to Locations</a>
+
+<div class="location-detail-header">
+    <h1 class="location-detail-title">{{ location.name }}</h1>
+    <div class="location-detail-actions">
+        <a href="{{ url_for('locations.location_edit', id=location.id) }}" class="button button-primary">Edit</a>
+        <button class="button button-danger" data-modal-trigger="deleteModal">Delete</button>
+    </div>
+</div>
+
+{% if location.description %}
+<div class="location-description">
+    <p>{{ location.description }}</p>
+</div>
+{% endif %}
+
+{% if location.children %}
+<div class="location-children-tree">
+    <div class="location-children-header">
+        <h3 class="location-section-title">Sub-Locations</h3>
+        <a href="{{ url_for('locations.location_add', parent_id=location.id) }}" class="button button-primary">Add Sub-location</a>
+    </div>
+    <div class="tree-container">
+        <ul class="tree-root">
+            {% macro render_child_location(child_location, is_last=False, depth=0) %}
+            <li class="tree-item" data-item-id="{{ child_location.id }}" data-depth="{{ depth }}" data-is-last="{{ is_last }}">
+                <div class="tree-node">
+                    <div class="tree-lines" data-depth="{{ depth }}"></div>
+                    <button class="tree-toggle {% if not child_location.children %}tree-toggle-hidden{% endif %}" 
+                            data-tree-toggle="{{ child_location.id }}">
+                        {% if child_location.children %}▼{% endif %}
+                    </button>
+                    <a href="{{ url_for('locations.location_detail', id=child_location.id) }}" class="tree-name">{{ child_location.name }}</a>
+                    <span class="tree-info">{{ child_location.copies|length }} book(s)</span>
+                    <a href="{{ url_for('locations.location_detail', id=child_location.id) }}" class="button button-small button-secondary">View</a>
+                </div>
+                {% if child_location.children %}
+                <ul class="tree-children" data-tree-children="{{ child_location.id }}">
+                    {% for grandchild in child_location.children %}
+                        {{ render_child_location(grandchild, loop.last, depth + 1) }}
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </li>
+            {% endmacro %}
+            
+            {% for child in location.children %}
+                {{ render_child_location(child, loop.last, 0) }}
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+
+<h3 class="location-section-title">Books at this location</h3>
+
+{% if all_copies|length > 0 %}
+<div class="book-grid">
+    {% for copy in all_copies %}
+    {{ book_card(copy) }}
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert-info">
+    No books found at this location.
+</div>
+{% endif %}
+
+<!-- Delete Modal -->
+<div class="modal" id="deleteModal">
+    <div class="modal-overlay" data-modal-close="deleteModal"></div>
+    <div class="modal-container">
+        <div class="modal-header">
+            <h5 class="modal-title">Confirm Delete</h5>
+            <button type="button" class="modal-close" data-modal-close="deleteModal" aria-label="Close">×</button>
+        </div>
+        <div class="modal-body">
+            Are you sure you want to delete "{{ location.name }}"? This will remove location information from {{ all_copies|length }} book(s).
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="button button-secondary" data-modal-close="deleteModal">Cancel</button>
+            <form action="{{ url_for('locations.location_delete', id=location.id) }}" method="post" style="display: inline;">
+                <button type="submit" class="button button-danger">Delete</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/tree.js') }}"></script>
+<script src="{{ url_for('static', filename='js/modal.js') }}"></script>
+{% endblock %}

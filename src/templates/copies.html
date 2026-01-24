@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Copies</h1>
+</div>
+
+<!-- Search -->
+<form action="{{ url_for('main.search_page') }}" method="GET" class="mb-4">
+    <div class="input-group">
+        <input type="text" name="q" class="form-control" placeholder="Search copies..." aria-label="Search">
+        <!-- <button class="btn btn-light" type="submit">
+            <i class="fas fa-search"></i>
+        </button> -->
+    </div>
+</form>
+
+{% if copies %}
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Location</th>
+                <th>Author(s)</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for copy in copies %}
+            <tr>
+                <td><a href="{{ url_for('books.copy_detail', id=copy.id) }}">{{ copy.work.title }}</a></td>
+                <td>{{ copy.location.name }}</td>
+                <td>
+                    {% for author in copy.work.authors %}
+                    <a href="{{ url_for('authors.author_detail', id=author.id) }}" class="badge bg-primary text-decoration-none">{{ author.primary_name|truncate(20) }}</a>
+                    {% endfor %}
+                </td>
+                <td>
+                    <a href="{{ url_for('books.copy_detail', id=copy.id) }}" class="btn btn-sm btn-primary">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+    No copies found. <a href="{{ url_for('books.copy_add') }}">Add your first copy</a>.
+</div>
+{% endif %}
+
+{% endblock %}
