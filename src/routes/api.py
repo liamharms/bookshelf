@@ -10,383 +10,269 @@ api_bp = Blueprint('api', __name__)
 @api_bp.route('/search')
 def api_search():
     query = request.args.get('q', '').strip()
-    search_type = request.args.get('type', 'all')
-    date_range = request.args.get('date', '')
     
     if not query:
         return jsonify({'books': []})
     
     try:
-        print(f"Search query: '{query}', type: '{search_type}', date_range: '{date_range}'")
+        print(f"Search query: '{query}'")
         
         search_conditions = []
         
-        # Apply filters based on search type
-        if search_type == 'all' or search_type is None:
-            # Direct field searches with proper casting
-            search_conditions.extend([
-                Work.title.ilike(f'%{query}%'),
-                cast(Work.isbn, String).ilike(f'%{query}%'),
-                Work.description.ilike(f'%{query}%')
-            ])
-        elif search_type == 'title':
-            search_conditions.append(Work.title.ilike(f'%{query}%'))
-        elif search_type == 'authors':
-            search_conditions.append(Work.authors.any(Author.primary_name.ilike(f'%{query}%')))
-        elif search_type == 'tags':
-            search_conditions.append(Work.tags.any(Tag.label.ilike(f'%{query}%')))
-        elif search_type == 'isbn':
-            search_conditions.append(cast(Work.isbn, String).ilike(f'%{query}%'))
-        elif search_type == 'location':
-            search_conditions.append(Work.copies.any(Copy.location.has(Location.name.ilike(f'%{query}%'))))
-        elif search_type == 'description':
-            search_conditions.append(Work.description.ilike(f'%{query}%'))
+        # Direct field searches with proper casting
+        search_conditions.extend([
+            Book.title.ilike(f'%{query}%'),
+            cast(Book.isbn, String).ilike(f'%{query}%'),
+            Book.description.ilike(f'%{query}%')
+        ])
         
-        # Always include relationship searches for better results
-        if search_type != 'authors':
-            search_conditions.extend([
-                Work.authors.any(Author.primary_name.ilike(f'%{query}%')),
-                Work.tags.any(Tag.label.ilike(f'%{query}%')),
-                Work.copies.any(Copy.location.has(Location.name.ilike(f'%{query}%')))
-            ])
-        
-        # Apply date range filter
-        if date_range:
-            try:
-                if date_range == 'recent':
-                    # Last 30 days
-                    from datetime import datetime, timedelta
-                    start_date = datetime.now() - timedelta(days=30)
-                    search_conditions.append(Work.copies.any(Copy.acquired >= start_date))
-                elif date_range == 'this_month':
-                    # This calendar month
-                    from datetime import datetime
-                    now = datetime.now()
-                    if now.month == 1:
-                        # Go to previous month
-                        start_date = datetime(year=now.year-1, month=12, day=1)
-                    else:
-                        # Go to start of this month
-                        start_date = datetime(year=now.year, month=now.month, day=1)
-                elif date_range == 'last_month':
-                    # Previous calendar month
-                    from datetime import datetime
-                    now = datetime.now()
-                    if now.month == 1:
-                        start_date = datetime(year=now.year-1, month=12, day=1)
-                    else:
-                        start_date = datetime(year=now.year, month=now.month-1, day=1)
-                else:
-                    # Default - no date filtering
-                    pass
-            except Exception as e:
-                print(f"Error parsing date range '{date_range}': {e}")
+        # Relationship searches
+        search_conditions.extend([
+            Book.authors.any(Author.name.ilike(f'%{query}%')),
+            Book.tags.any(Tag.label.ilike(f'%{query}%')),
+            Book.location.has(Location.name.ilike(f'%{query}%'))
+        ])
         
         # Combine with OR
         search_filter = or_(*search_conditions)
         
-        works = Work.query.filter(search_filter).all()
-        print(f"Found {len(works)} works")
+        books = Book.query.filter(search_filter).all()
+        print(f"Found {len(books)} books")
         
-        work_list = []
-        for work in works:
+        book_list = []
+        for book in books:
             try:
-                work_data = {
-                    'id': work.id,
-                    'title': work.title or '',
-                    'isbn': work.isbn or '',
-                    'description': work.description or '',
-                    'cover_url': work.cover_url or '',
-                    'authors': [{'id': a.id, 'name': a.primary_name} for a in (work.authors or [])],
-                    'tags': [{'id': t.id, 'label': t.label} for t in (work.tags or [])],
-                    'location': {'id': work.location.id, 'name': work.location.name} if work.location else None,
-                    'copies_count': len(work.copies or [])
+                book_data = {
+                    'id': book.id,
+                    'title': book.title or '',
+                    'isbn': book.isbn or '',
+                    'description': book.description or '',
+                    'cover_url': book.cover_url or '',
+                    'authors': [{'id': a.id, 'name': a.name} for a in (book.authors or [])],
+                    'tags': [{'id': t.id, 'label': t.label} for t in (book.tags or [])],
+                    'location': {'id': book.location.id, 'name': book.location.name} if book.location else None
                 }
-                work_list.append(work_data)
+                book_list.append(book_data)
             except Exception as e:
-                print(f"Error processing work {work.id}: {e}")
+                print(f"Error processing book {book.id}: {e}")
                 continue
         
-        print(f"Returning {len(work_list)} processed works")
-        return jsonify({'books': work_list})
+        print(f"Returning {len(book_list)} processed books")
+        return jsonify({'books': book_list})
         
     except Exception as e:
         print(f"Search error: {e}")
         return jsonify({'error': str(e), 'books': []}), 500
 
-@api_bp.route('/search/works')
-def api_search_works():
-    query = request.args.get('q', '').strip()
-    
-    if not query:
-        return jsonify({'works': []})
-    
+
+@api_bp.route('/isbn-lookup/<isbn>')
+def isbn_lookup(isbn):
+    """Look up book information by ISBN"""
     try:
-        search_conditions = [
-            Work.title.ilike(f'%{query}%'),
-            cast(Work.isbn, String).ilike(f'%{query}%'),
-            Work.description.ilike(f'%{query}%'),
-            Work.authors.any(Author.primary_name.ilike(f'%{query}%')),
-            Work.tags.any(Tag.label.ilike(f'%{query}%'))
-        ]
+        # Try Google Books API first
+        google_url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
+        response = requests.get(google_url, timeout=5)
         
-        search_filter = or_(*search_conditions)
-        works = Work.query.filter(search_filter).limit(50).all()
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('items'):
+                book = data['items'][0]['volumeInfo']
+                return jsonify({
+                    'success': True,
+                    'title': book.get('title', ''),
+                    'authors': book.get('authors', []),
+                    'description': book.get('description', ''),
+                    'cover_url': book.get('imageLinks', {}).get('thumbnail', '').replace('http:', 'https:'),
+                    'categories': book.get('categories', [])
+                })
         
-        work_list = []
-        for work in works:
-            work_data = {
-                'id': work.id,
-                'title': work.title or '',
-                'isbn': work.isbn or '',
-                'authors': [a.primary_name for a in (work.authors or [])],
-                'copies_count': len(work.copies or [])
-            }
-            work_list.append(work_data)
+        # Fallback to Open Library
+        openlibrary_url = f"https://openlibrary.org/api/books?bibkeys=ISBN:{isbn}&format=json&jscmd=data"
+        response = requests.get(openlibrary_url, timeout=5)
         
-        return jsonify({'works': work_list})
+        if response.status_code == 200:
+            data = response.json()
+            book_key = f"ISBN:{isbn}"
+            if data.get(book_key):
+                book = data[book_key]
+                return jsonify({
+                    'success': True,
+                    'title': book.get('title', ''),
+                    'authors': [a['name'] for a in book.get('authors', [])],
+                    'description': book.get('notes', '') or book.get('subtitle', ''),
+                    'cover_url': book.get('cover', {}).get('medium', ''),
+                    'categories': [s['name'] for s in book.get('subjects', [])]
+                })
+        
+        return jsonify({'success': False, 'error': 'Book not found'})
         
     except Exception as e:
-        print(f"Works search error: {e}")
-        return jsonify({'error': str(e), 'works': []}), 500
-
-@api_bp.route('/search/copies')
-def api_search_copies():
-    query = request.args.get('q', '').strip()
+        return jsonify({'success': False, 'error': str(e)})
     
-    if not query:
-        return jsonify({'copies': []})
-    
+@api_bp.route('/authors/search', methods=['POST'])
+def search_authors():
+    """Find similar authors using fuzzy matching"""
     try:
-        search_conditions = [
-            Work.title.ilike(f'%{query}%'),
-            Work.authors.any(Author.primary_name.ilike(f'%{query}%')),
-            Location.name.ilike(f'%{query}%')
-        ]
+        data = request.get_json()
+        search_name = data.get('name', '').strip()
         
-        search_filter = or_(*search_conditions)
-        copies = Copy.query.join(Work).join(Location).filter(search_filter).limit(50).all()
+        if not search_name:
+            return jsonify({'success': False, 'error': 'Name is required'})
         
-        copy_list = []
-        for copy in copies:
-            copy_data = {
-                'id': copy.id,
-                'work_title': copy.work.title if copy.work else '',
-                'work_id': copy.work.id if copy.work else None,
-                'location': copy.location.name if copy.location else '',
-                'location_id': copy.location.id if copy.location else None,
-                'condition': copy.condition,
-                'authors': [a.primary_name for a in (copy.work.authors if copy.work else [])]
-            }
-            copy_list.append(copy_data)
-        
-        return jsonify({'copies': copy_list})
-        
-    except Exception as e:
-        print(f"Copies search error: {e}")
-        return jsonify({'error': str(e), 'copies': []}), 500
-
-@api_bp.route('/search/authors')
-def api_search_authors():
-    query = request.args.get('q', '').strip()
-    
-    if not query:
-        return jsonify({'authors': []})
-    
-    try:
-        search_conditions = [
-            Author.primary_name.ilike(f'%{query}%'),
-            Author.bio.ilike(f'%{query}%')
-        ]
-        
-        search_filter = or_(*search_conditions)
-        authors = Author.query.filter(search_filter).limit(50).all()
-        
-        author_list = []
+        # Get all authors with their alternate names
+        authors = db.session.query(Author).all()
+        matches = []
+        print(authors)
         for author in authors:
-            work_count = len(author.works or [])
-            author_data = {
+            print(author)
+            # Check primary name with multiple methods
+            primary_ratio = fuzz.ratio(search_name.lower(), author.primary_name.lower())
+            primary_partial = fuzz.partial_ratio(search_name.lower(), author.primary_name.lower())
+            primary_token_sort = fuzz.token_sort_ratio(search_name.lower(), author.primary_name.lower())
+            
+            # Use the best score from all methods
+            primary_score = max(primary_ratio, primary_partial, primary_token_sort)
+            
+            # Check alternate names
+            alt_scores = []
+            for alt_name in author.alt_names:
+                alt_ratio = fuzz.ratio(search_name.lower(), alt_name.alt_name.lower())
+                alt_partial = fuzz.partial_ratio(search_name.lower(), alt_name.alt_name.lower())
+                alt_token_sort = fuzz.token_sort_ratio(search_name.lower(), alt_name.alt_name.lower())
+                alt_scores.append(max(alt_ratio, alt_partial, alt_token_sort))
+            
+            # Use the best score across all names
+            best_score = max([primary_score] + alt_scores) if alt_scores else primary_score
+
+            if best_score >= 70:  # Threshold for similarity
+                matches.append({
+                    'id': author.id,
+                    'name': author.primary_name,
+                    'score': best_score
+                })
+        
+        # Sort by score and return top 2
+        matches.sort(key=lambda x: x['score'], reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'matches': matches[:2]
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@api_bp.route('/authors/create', methods=['POST'])
+def create_author():
+    """Create a new author"""
+    try:
+        data = request.get_json()
+        name = data.get('name', '').strip()
+        
+        if not name:
+            return jsonify({'success': False, 'error': 'Name is required'})
+        
+        # Check if author already exists
+        existing = db.session.query(Author).filter(
+            Author.primary_name.ilike(name)
+        ).first()
+        
+        if existing:
+            return jsonify({'success': False, 'error': 'Author already exists'})
+        
+        author = Author(primary_name=name)
+        db.session.add(author)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'author': {
                 'id': author.id,
-                'primary_name': author.primary_name or '',
-                'bio': author.bio or '',
-                'work_count': work_count
+                'name': author.primary_name
             }
-            author_list.append(author_data)
-        
-        return jsonify({'authors': author_list})
+        })
         
     except Exception as e:
-        print(f"Authors search error: {e}")
-        return jsonify({'error': str(e), 'authors': []}), 500
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
 
-@api_bp.route('/search/tags')
-def api_search_tags():
-    query = request.args.get('q', '').strip()
-    
-    if not query:
-        return jsonify({'tags': []})
-    
+
+@api_bp.route('/tags/search', methods=['POST'])
+def search_tags():
+    """Find similar tags using fuzzy matching"""
     try:
-        search_conditions = [
-            Tag.label.ilike(f'%{query}%'),
-            Tag.description.ilike(f'%{query}%')
-        ]
+        data = request.get_json()
+        search_label = data.get('label', '').strip()
         
-        search_filter = or_(*search_conditions)
-        tags = Tag.query.filter(search_filter).limit(50).all()
+        if not search_label:
+            return jsonify({'success': False, 'error': 'Label is required'})
         
-        tag_list = []
+        # Get all tags
+        tags = db.session.query(Tag).all()
+        matches = []
+        
         for tag in tags:
-            work_count = len(tag.works or [])
-            tag_data = {
-                'id': tag.id,
-                'label': tag.label or '',
-                'description': tag.description or '',
-                'parent_id': tag.parent_id,
-                'work_count': work_count
-            }
-            tag_list.append(tag_data)
+            # Use multiple fuzzy matching methods
+            ratio_score = fuzz.ratio(search_label.lower(), tag.label.lower())
+            partial_score = fuzz.partial_ratio(search_label.lower(), tag.label.lower())
+            token_sort_score = fuzz.token_sort_ratio(search_label.lower(), tag.label.lower())
+            
+            # Use the best score from all methods
+            best_score = max(ratio_score, partial_score, token_sort_score)
+            
+            if best_score >= 70:  # Threshold for similarity
+                matches.append({
+                    'id': tag.id,
+                    'label': tag.label,
+                    'type': tag.type,
+                    'score': best_score
+                })
         
-        return jsonify({'tags': tag_list})
+        # Sort by score and return top 2
+        matches.sort(key=lambda x: x['score'], reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'matches': matches[:2]
+        })
         
     except Exception as e:
-        print(f"Tags search error: {e}")
-        return jsonify({'error': str(e), 'tags': []}), 500
+        return jsonify({'success': False, 'error': str(e)})
 
-@api_bp.route('/search/locations')
-def api_search_locations():
-    query = request.args.get('q', '').strip()
-    
-    if not query:
-        return jsonify({'locations': []})
-    
+
+@api_bp.route('/tags/create', methods=['POST'])
+def create_tag():
+    """Create a new tag"""
     try:
-        search_conditions = [
-            Location.name.ilike(f'%{query}%'),
-            Location.description.ilike(f'%{query}%')
-        ]
+        data = request.get_json()
+        label = data.get('label', '').strip()
+        tag_type = data.get('type', 'genre').strip()  # Default to 'genre'
         
-        search_filter = or_(*search_conditions)
-        locations = Location.query.filter(search_filter).limit(50).all()
+        if not label:
+            return jsonify({'success': False, 'error': 'Label is required'})
         
-        location_list = []
-        for location in locations:
-            copy_count = len(location.copies or [])
-            location_data = {
-                'id': location.id,
-                'name': location.name or '',
-                'description': location.description or '',
-                'parent_id': location.parent_id,
-                'copy_count': copy_count
+        # Check if tag already exists
+        existing = db.session.query(Tag).filter(
+            Tag.label.ilike(label)
+        ).first()
+        
+        if existing:
+            return jsonify({'success': False, 'error': 'Tag already exists'})
+        
+        tag = Tag(label=label, type=tag_type)
+        db.session.add(tag)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'tag': {
+                'id': tag.id,
+                'label': tag.label,
+                'type': tag.type
             }
-            location_list.append(location_data)
-        
-        return jsonify({'locations': location_list})
+        })
         
     except Exception as e:
-        print(f"Locations search error: {e}")
-        return jsonify({'error': str(e), 'locations': []}), 500
-    query = request.args.get('q', '').strip()
-    search_type = request.args.get('type', 'all')
-    date_range = request.args.get('date', '')
-    
-    if not query:
-        return jsonify({'books': []})
-    
-    try:
-        print(f"Search query: '{query}', type: '{search_type}', date_range: '{date_range}'")
-        
-        search_conditions = []
-        
-        # Apply filters based on search type
-        if search_type == 'all' or search_type is None:
-            # Direct field searches with proper casting
-            search_conditions.extend([
-                Work.title.ilike(f'%{query}%'),
-                cast(Work.isbn, String).ilike(f'%{query}%'),
-                Work.description.ilike(f'%{query}%')
-            ])
-        elif search_type == 'title':
-            search_conditions.append(Work.title.ilike(f'%{query}%'))
-        elif search_type == 'authors':
-            search_conditions.append(Work.authors.any(Author.primary_name.ilike(f'%{query}%')))
-        elif search_type == 'tags':
-            search_conditions.append(Work.tags.any(Tag.label.ilike(f'%{query}%')))
-        elif search_type == 'isbn':
-            search_conditions.append(cast(Work.isbn, String).ilike(f'%{query}%'))
-        elif search_type == 'location':
-            search_conditions.append(Work.copies.any(Copy.location.has(Location.name.ilike(f'%{query}%'))))
-        elif search_type == 'description':
-            search_conditions.append(Work.description.ilike(f'%{query}%'))
-        
-        # Always include relationship searches for better results
-        if search_type != 'authors':
-            search_conditions.extend([
-                Work.authors.any(Author.primary_name.ilike(f'%{query}%')),
-                Work.tags.any(Tag.label.ilike(f'%{query}%')),
-                Work.copies.any(Copy.location.has(Location.name.ilike(f'%{query}%')))
-            ])
-        
-        # Apply date range filter
-        if date_range:
-            try:
-                if date_range == 'recent':
-                    # Last 30 days
-                    from datetime import datetime, timedelta
-                    start_date = datetime.now() - timedelta(days=30)
-                    search_conditions.append(Work.copies.any(Copy.acquired >= start_date))
-                elif date_range == 'this_month':
-                    # This calendar month
-                    from datetime import datetime
-                    now = datetime.now()
-                    if now.month == 1:
-                        # Go to previous month
-                        start_date = datetime(year=now.year-1, month=12, day=1)
-                    else:
-                        # Go to start of this month
-                        start_date = datetime(year=now.year, month=now.month, day=1)
-                elif date_range == 'last_month':
-                    # Previous calendar month
-                    from datetime import datetime
-                    now = datetime.now()
-                    if now.month == 1:
-                        start_date = datetime(year=now.year-1, month=12, day=1)
-                    else:
-                        start_date = datetime(year=now.year, month=now.month-1, day=1)
-                else:
-                    # Default - no date filtering
-                    pass
-            except Exception as e:
-                print(f"Error parsing date range '{date_range}': {e}")
-        
-        # Combine with OR
-        search_filter = or_(*search_conditions)
-        
-        works = Work.query.filter(search_filter).all()
-        print(f"Found {len(works)} works")
-        
-        work_list = []
-        for work in works:
-            try:
-                work_data = {
-                    'id': work.id,
-                    'title': work.title or '',
-                    'isbn': work.isbn or '',
-                    'description': work.description or '',
-                    'cover_url': work.cover_url or '',
-                    'authors': [{'id': a.id, 'name': a.primary_name} for a in (work.authors or [])],
-                    'tags': [{'id': t.id, 'label': t.label} for t in (work.tags or [])],
-                    'location': {'id': work.location.id, 'name': work.location.name} if work.location else None,
-                    'copies_count': len(work.copies or [])
-                }
-                work_list.append(work_data)
-            except Exception as e:
-                print(f"Error processing work {work.id}: {e}")
-                continue
-        
-        print(f"Returning {len(work_list)} processed works")
-        return jsonify({'books': work_list})
-        
-    except Exception as e:
-        print(f"Search error: {e}")
-        return jsonify({'error': str(e), 'books': []}), 500
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
