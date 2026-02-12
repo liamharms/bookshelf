@@ -3,24 +3,37 @@
 {% block title %}Authors - {{ super() }}{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Authors</h1>
-    <a href="{{ url_for('authors.author_add') }}" class="btn btn-success">Add New Author</a>
+<div class="page-header">
+    <h1 class="page-title">Authors</h1>
+    <a href="{{ url_for('authors.author_add') }}" class="button button-primary">Add New Author</a>
 </div>
 
-<!-- Search -->
-<form action="{{ url_for('main.search_page') }}" method="GET" class="mb-4">
-    <div class="input-group">
-        <input type="text" name="q" class="form-control" placeholder="Search authors..." aria-label="Search">
-        <button class="btn btn-light" type="submit">
-            <i class="fas fa-search"></i>
+    <!-- Dynamic Search -->
+<div class="search-form">
+    <div class="search-container">
+        <input type="text" id="authorsSearchInput" class="search-input" placeholder="Search authors by name or bio..." aria-label="Search">
+        <button class="search-button" type="button">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+            </svg>
         </button>
     </div>
-</form>
+</div>
 
+<!-- Loading indicator -->
+<div id="authorsLoadingIndicator" class="loading-indicator" style="display: none;">
+    <div class="loading-spinner"></div>
+    <span>Searching...</span>
+</div>
+
+<!-- Results count -->
+<div id="authorsResultsCount" class="results-count" style="display: none;"></div>
+
+<div id="authorsResultsContainer">
 {% if authors %}
-<div class="table-responsive">
-    <table class="table table-striped">
+<div class="table-container">
+    <table class="data-table">
         <thead>
             <tr>
                 <th>Name</th>
@@ -28,13 +41,13 @@
                 <th>Actions</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody id="originalAuthorsTable">
             {% for author in authors %}
             <tr>
-                <td><a href="{{ url_for('authors.author_detail', id=author.id) }}">{{ author.primary_name }}</a></td>
+                <td><a href="{{ url_for('authors.author_detail', id=author.id) }}" class="table-link">{{ author.primary_name }}</a></td>
                 <td>{{ author.works|length }}</td>
                 <td>
-                    <a href="{{ url_for('authors.author_detail', id=author.id) }}" class="btn btn-sm btn-info">View</a>
+                    <a href="{{ url_for('authors.author_detail', id=author.id) }}" class="button button-small button-primary">View</a>
                 </td>
             </tr>
             {% endfor %}
@@ -42,8 +55,160 @@
     </table>
 </div>
 {% else %}
-<div class="alert alert-info">
-    No authors found. <a href="{{ url_for('authors.author_add') }}">Add your first author</a>.
+<div class="alert-info">
+    No authors found. <a href="{{ url_for('authors.author_add') }}" class="alert-link">Add your first author</a>.
 </div>
 {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let authorsSearchTimeout;
+    const authorsSearchInput = document.getElementById('authorsSearchInput');
+    const authorsResultsContainer = document.getElementById('authorsResultsContainer');
+    const authorsLoadingIndicator = document.getElementById('authorsLoadingIndicator');
+    const authorsResultsCount = document.getElementById('authorsResultsCount');
+    const originalAuthorsTable = document.getElementById('originalAuthorsTable');
+    let originalAuthorsHtml = originalAuthorsTable ? originalAuthorsTable.innerHTML : '';
+
+    function performAuthorsSearch(query) {
+        if (query.trim() === '') {
+            authorsResultsContainer.innerHTML = originalAuthorsTable ? 
+                `<div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Works</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>${originalAuthorsHtml}</tbody>
+                    </table>
+                </div>` : 
+                `<div class="alert-info">
+                    No authors found. <a href="/authors/add" class="alert-link">Add your first author</a>.
+                </div>`;
+            authorsResultsCount.style.display = 'none';
+            return;
+        }
+        
+        authorsLoadingIndicator.style.display = 'flex';
+        
+        fetch(`/api/search/authors?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                displayAuthorsResults(data.authors, query);
+            })
+            .catch(error => {
+                console.error('Authors search error:', error);
+                authorsResultsContainer.innerHTML = `
+                    <div class="alert-error">
+                        <p>An error occurred while searching. Please try again.</p>
+                    </div>
+                `;
+            })
+            .finally(() => {
+                authorsLoadingIndicator.style.display = 'none';
+            });
+    }
+
+    function displayAuthorsResults(authors, query) {
+        const count = authors.length;
+        
+        if (count > 0) {
+            authorsResultsCount.innerHTML = `Found ${count} author${count !== 1 ? 's' : ''}`;
+            authorsResultsCount.style.display = 'block';
+        } else {
+            authorsResultsCount.style.display = 'none';
+        }
+
+        if (count === 0) {
+            authorsResultsContainer.innerHTML = `
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Works</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="3" class="text-center">
+                                    No authors found matching "${query}".
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            return;
+        }
+
+        let html = `
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Works</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        authors.forEach(author => {
+            const name = highlightText(author.primary_name || '', query);
+            const bio = author.bio ? highlightText(author.bio.substring(0, 100), query) : '';
+            
+            html += `
+                <tr>
+                    <td>
+                        <a href="/authors/${author.id}" class="table-link">${name}</a>
+                        ${bio ? `<br><small class="text-muted">${bio}${author.bio.length > 100 ? '...' : ''}</small>` : ''}
+                    </td>
+                    <td>${author.work_count || 0}</td>
+                    <td>
+                        <a href="/authors/${author.id}" class="button button-small button-primary">View</a>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        authorsResultsContainer.innerHTML = html;
+    }
+
+    function highlightText(text, query) {
+        if (!text || !query || typeof text !== 'string') return text || '';
+        
+        const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+        return text.replace(regex, '<span class="highlight">$1</span>');
+    }
+
+    function escapeRegex(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    authorsSearchInput.addEventListener('input', function() {
+        const query = this.value;
+        
+        clearTimeout(authorsSearchTimeout);
+        
+        authorsSearchTimeout = setTimeout(() => {
+            performAuthorsSearch(query);
+        }, 300);
+    });
+
+    authorsSearchInput.focus();
+</script>
 {% endblock %}

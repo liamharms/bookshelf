@@ -89,7 +89,7 @@ def work_add(isbn=None):
         db.session.add(work)
         db.session.commit()
         flash('Book added successfully!', 'success')
-        return redirect(url_for('books.work_detail', id=work.id))
+        return redirect(url_for('books.copy_add', work_id=work.id))
 
     return render_template('work_form.html', form=form, title='Add Work')
 
@@ -103,6 +103,10 @@ def copy_add(work_id=None):
     form.location.choices = [(0, '-none-')] + [(l.id, l.name) for l in db.session.query(Location).all()]
     form.owner.choices = [(0, '-none-')] + [(o.id, o.name) for o in db.session.query(User).all()]
     form.lended_to.choices = [(0, '-none-')] + [(o.id, o.name) for o in db.session.query(User).all()]
+
+    # Pre-select the work if work_id is provided
+    if work_id and work:
+        form.work.data = work_id
 
     if form.validate_on_submit():
         copy = Copy(

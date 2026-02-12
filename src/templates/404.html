@@ -1,9 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}{{ title }} - {{ super() }}{% endblock %}
+{% block title %}404 - {{ super() }}{% endblock %}
 
 {% block content %}
-<h1>That's unfortunate!</h1>
-<p>It's like the library of Alexandria all over again...</p>
-<p>Yeah that's a 404.</p>
+<div class="error-page">
+    <div class="error-container">
+        <h1 class="error-title">404</h1>
+        <h2 class="error-subtitle">Page Not Found</h2>
+        <p class="error-description">That's unfortunate! It's like the library of Alexandria all over again...</p>
+        <div class="error-actions">
+            <a href="{{ url_for('main.index') }}" class="button button-primary">Go Home</a>
+            <a href="javascript:history.back()" class="button button-secondary">Go Back</a>
+        </div>
+    </div>
+</div>
 {% endblock %}

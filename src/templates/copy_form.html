@@ -3,43 +3,45 @@
 {% block title %}{{ title }} - {{ super() }}{% endblock %}
 
 {% block content %}
-<h1>{{ title }}</h1>
+<div class="form-container">
+    <h1 class="form-title">{{ title }}</h1>
 
-<link rel="stylesheet" href="/static/css/tom-select.default.css">
-<script src="/static/js/tom-select.complete.js"></script>
-<script src="/static/js/tom-select.js"></script>
+    <link rel="stylesheet" href="/static/css/tom-select.default.css">
+    <script src="/static/js/tom-select.complete.js"></script>
+    <script src="/static/js/tom-select.js"></script>
 
-<form method="POST" class="mt-4">
-    {{ form.hidden_tag() }}
-    
-    <div class="mb-3">
-        {{ form.work.label(class="form-label") }}
-        {{ form.work(class="form-control") }}
-    </div>
-    
-    <div class="mb-3">
-        {{ form.location.label(class="form-label") }}
-        {{ form.location(class="form-control", autofocus=True) }}
-    </div>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        
+        <div class="form-group">
+            {{ form.work.label(class="form-label") }}
+            {{ form.work(class="form-control") }}
+        </div>
+        
+        <div class="form-group">
+            {{ form.location.label(class="form-label") }}
+            {{ form.location(class="form-control", autofocus=True) }}
+        </div>
 
-    <div class="mb-3">
-        {{ form.owner.label(class="form-label") }}
-        {{ form.owner(class="form-control", placeholder="Search owners...") }}
-    </div>
+        <div class="form-group">
+            {{ form.owner.label(class="form-label") }}
+            {{ form.owner(class="form-control", placeholder="Search owners...") }}
+        </div>
 
-    <div class="mb-3">
-        {{ form.condition.label(class="form-label") }}
-        {{ form.condition(class="form-control") }}
-    </div>
-    
-    <div class="mb-3">
-        {{ form.lended_to.label(class="form-label") }}
-        {{ form.lended_to(class="form-control") }}
-    </div>
-    
-    <div class="mb-3">
-        {{ form.submit(class="btn btn-primary") }}
-        <a href="{{ url_for('books.work_list') }}" class="btn btn-secondary">Cancel</a>
-    </div>
-</form>
+        <div class="form-group">
+            {{ form.condition.label(class="form-label") }}
+            {{ form.condition(class="form-control") }}
+        </div>
+        
+        <div class="form-group">
+            {{ form.lended_to.label(class="form-label") }}
+            {{ form.lended_to(class="form-control") }}
+        </div>
+        
+        <div class="form-actions">
+            {{ form.submit(class="button button-primary") }}
+            <a href="{{ url_for('books.work_list') }}" class="button button-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
 {% endblock %}

@@ -1,54 +1,158 @@
 {% extends "base.html" %}
+{% from "macros.html" import book_card %}
+
+{% block title %}Copies - {{ super() }}{% endblock %}
 
 {% block content %}
-
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Copies</h1>
+<div class="page-header">
+    <h1 class="page-title">Copies</h1>
 </div>
 
-<!-- Search -->
-<form action="{{ url_for('main.search_page') }}" method="GET" class="mb-4">
-    <div class="input-group">
-        <input type="text" name="q" class="form-control" placeholder="Search copies..." aria-label="Search">
-        <!-- <button class="btn btn-light" type="submit">
-            <i class="fas fa-search"></i>
-        </button> -->
+<!-- Dynamic Search -->
+<div class="search-form">
+    <div class="search-container">
+        <input type="text" id="copiesSearchInput" class="search-input" placeholder="Search copies by title, author, location..." aria-label="Search">
+        <button class="search-button" type="button">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+            </svg>
+        </button>
     </div>
-</form>
+</div>
 
+<!-- Loading indicator -->
+<div id="copiesLoadingIndicator" class="loading-indicator" style="display: none;">
+    <div class="loading-spinner"></div>
+    <span>Searching...</span>
+</div>
+
+<!-- Results count -->
+<div id="copiesResultsCount" class="results-count" style="display: none;"></div>
+
+<div id="copiesResultsContainer">
 {% if copies %}
-<div class="table-responsive">
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>Location</th>
-                <th>Author(s)</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for copy in copies %}
-            <tr>
-                <td><a href="{{ url_for('books.copy_detail', id=copy.id) }}">{{ copy.work.title }}</a></td>
-                <td>{{ copy.location.name }}</td>
-                <td>
-                    {% for author in copy.work.authors %}
-                    <a href="{{ url_for('authors.author_detail', id=author.id) }}" class="badge bg-primary text-decoration-none">{{ author.primary_name|truncate(20) }}</a>
-                    {% endfor %}
-                </td>
-                <td>
-                    <a href="{{ url_for('books.copy_detail', id=copy.id) }}" class="btn btn-sm btn-primary">View</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="book-grid" id="originalCopiesGrid">
+    {% for copy in copies %}
+    {{ book_card(copy) }}
+    {% endfor %}
 </div>
 {% else %}
-<div class="alert alert-info">
-    No copies found. <a href="{{ url_for('books.copy_add') }}">Add your first copy</a>.
+<div class="alert-info">
+    No copies found. <a href="{{ url_for('books.copy_add') }}" class="alert-link">Add your first copy</a>.
 </div>
 {% endif %}
+</div>
 
+{% block scripts %}
+<script>
+    let copiesSearchTimeout;
+    const copiesSearchInput = document.getElementById('copiesSearchInput');
+    const copiesResultsContainer = document.getElementById('copiesResultsContainer');
+    const copiesLoadingIndicator = document.getElementById('copiesLoadingIndicator');
+    const copiesResultsCount = document.getElementById('copiesResultsCount');
+    const originalCopiesGrid = document.getElementById('originalCopiesGrid');
+    let originalCopiesHtml = originalCopiesGrid ? originalCopiesGrid.innerHTML : '';
+
+    function performCopiesSearch(query) {
+        if (query.trim() === '') {
+            copiesResultsContainer.innerHTML = originalCopiesGrid ? 
+                `<div class="book-grid">${originalCopiesHtml}</div>` : 
+                `<div class="alert-info">
+                    No copies found. <a href="/books/copies/add" class="alert-link">Add your first copy</a>.
+                </div>`;
+            copiesResultsCount.style.display = 'none';
+            return;
+        }
+        
+        copiesLoadingIndicator.style.display = 'flex';
+        
+        fetch(`/api/search/copies?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                displayCopiesResults(data.copies, query);
+            })
+            .catch(error => {
+                console.error('Copies search error:', error);
+                copiesResultsContainer.innerHTML = `
+                    <div class="alert-error">
+                        <p>An error occurred while searching. Please try again.</p>
+                    </div>
+                `;
+            })
+            .finally(() => {
+                copiesLoadingIndicator.style.display = 'none';
+            });
+    }
+
+    function displayCopiesResults(copies, query) {
+        const count = copies.length;
+        
+        if (count > 0) {
+            copiesResultsCount.innerHTML = `Found ${count} cop${count !== 1 ? 'ies' : 'y'}`;
+            copiesResultsCount.style.display = 'block';
+        } else {
+            copiesResultsCount.style.display = 'none';
+        }
+
+        if (count === 0) {
+            copiesResultsContainer.innerHTML = `
+                <div class="alert-info">
+                    No copies found matching "${query}".
+                </div>
+            `;
+            return;
+        }
+
+        let html = '<div class="book-grid">';
+        copies.forEach(copy => {
+            const title = highlightText(copy.work_title || '', query);
+            const authors = copy.authors && copy.authors.length > 0 ? 
+                copy.authors.map(a => highlightText(a, query)).join(', ') : '';
+            const location = highlightText(copy.location || '', query);
+            const condition = copy.condition ? highlightText(copy.condition, query) : '';
+            
+            html += `
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="card-title">
+                            <a href="/books/${copy.work_id}">${title}</a>
+                        </h3>
+                        <div class="card-text">
+                            ${authors ? `<p><strong>Authors:</strong> ${authors}</p>` : ''}
+                            ${location ? `<p><strong>Location:</strong> ${location}</p>` : ''}
+                            ${condition ? `<p><strong>Condition:</strong> ${condition}</p>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        copiesResultsContainer.innerHTML = html;
+    }
+
+    function highlightText(text, query) {
+        if (!text || !query || typeof text !== 'string') return text || '';
+        
+        const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+        return text.replace(regex, '<span class="highlight">$1</span>');
+    }
+
+    function escapeRegex(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    copiesSearchInput.addEventListener('input', function() {
+        const query = this.value;
+        
+        clearTimeout(copiesSearchTimeout);
+        
+        copiesSearchTimeout = setTimeout(() => {
+            performCopiesSearch(query);
+        }, 300);
+    });
+
+    copiesSearchInput.focus();
+</script>
 {% endblock %}

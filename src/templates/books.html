@@ -1,35 +1,47 @@
 {% extends "base.html" %}
+{% from "macros.html" import work_card %}
 
 {% block content %}
-
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Books</h1>
-    <a href="{{ url_for('books.book_add') }}" class="btn btn-success">Add New Book</a>
+<div class="page-header">
+    <h1 class="page-title">Books</h1>
+    <a href="{{ url_for('books.book_add') }}" class="button button-primary">Add New Book</a>
 </div>
 
-<!-- Search -->
-<form action="{{ url_for('main.search_page') }}" method="GET" class="mb-4">
-    <div class="input-group">
-        <input type="text" name="q" class="form-control" placeholder="Search books..." aria-label="Search">
-        <!-- <button class="btn btn-light" type="submit">
-            <i class="fas fa-search"></i>
-        </button> -->
+<!-- Dynamic Search -->
+<div class="search-form">
+    <div class="search-container">
+        <input type="text" id="booksSearchInput" class="search-input" placeholder="Search books by title, author, ISBN..." aria-label="Search">
+        <button class="search-button" type="button">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+            </svg>
+        </button>
     </div>
-</form>
+</div>
 
-<div class="row mb-4">
+<!-- Loading indicator -->
+<div id="booksLoadingIndicator" class="loading-indicator" style="display: none;">
+    <div class="loading-spinner"></div>
+    <span>Searching...</span>
+</div>
+
+<!-- Results count -->
+<div id="booksResultsCount" class="results-count" style="display: none;"></div>
+
+<div class="overview-cards">
     <!-- Works card -->
-    <div class="col-md-6">
-        <a href="{{ url_for('books.work_list') }}" class="text-decoration-none">
-            <div class="card h-100">
-                <div class="row g-0 m-2">
-                    <div class="col-9 p-3">
-                        <h4 class="card-title">View works</h4>
-                        <h5 class="card-subtitle mb-2">{{ works|length }} works</h5>
-                        <h6 class="card-text">Recently added: [work title]</h6>
+    <div class="overview-card">
+        <a href="{{ url_for('books.work_list') }}" class="overview-link">
+            <div class="card">
+                <div class="overview-content">
+                    <div class="overview-text">
+                        <h3 class="overview-title">View works</h3>
+                        <p class="overview-subtitle">{{ works|length }} works</p>
+                        <p class="overview-description">Recently added: [work title]</p>
                     </div>
-                    <div class="col-3 text-center">
-                        <img src="{{ url_for('static', filename='img/book_placeholder.jpeg') }}" alt="Works" class="img-fluid rounded m-2" style="max-width: 80%;">
+                    <div class="overview-image">
+                        <img src="{{ url_for('static', filename='img/book_placeholder.jpeg') }}" alt="Works">
                     </div>
                 </div>
             </div>
@@ -37,17 +49,17 @@
     </div>
 
     <!-- Copies card -->
-    <div class="col-md-6">
-        <a href="{{ url_for('books.copies_list') }}" class="text-decoration-none">
-            <div class="card h-100">
-                <div class="row g-0 m-2">
-                    <div class="col-9 p-3">
-                        <h4 class="card-title">View copies</h4>
-                        <h5 class="card-subtitle mb-2">{{ copies|length }} copies</h5>
-                        <h6 class="card-text">Recently added: [copy title]</h6>
+    <div class="overview-card">
+        <a href="{{ url_for('books.copies_list') }}" class="overview-link">
+            <div class="card">
+                <div class="overview-content">
+                    <div class="overview-text">
+                        <h3 class="overview-title">View copies</h3>
+                        <p class="overview-subtitle">{{ copies|length }} copies</p>
+                        <p class="overview-description">Recently added: [copy title]</p>
                     </div>
-                    <div class="col-3 text-center">
-                        <img src="{{ url_for('static', filename='img/book_placeholder.jpeg') }}" alt="Works" class="img-fluid rounded m-2" style="max-width: 80%;">
+                    <div class="overview-image">
+                        <img src="{{ url_for('static', filename='img/book_placeholder.jpeg') }}" alt="Copies">
                     </div>
                 </div>
             </div>
@@ -55,41 +67,139 @@
     </div>
 </div>
 
+<div id="booksResultsContainer">
 {% if works %}
-<div class="table-responsive">
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>ISBN</th>
-                <th>Copies</th>
-                <th>Author(s)</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for work in works %}
-            <tr>
-                <td><a href="{{ url_for('books.work_detail', id=work.id) }}">{{ work.title }}</a></td>
-                <td>{{ work.isbn }}</td>
-                <td><a href="{{ url_for('books.work_copies', work_id=work.id) }}">{{ work.copies|length }} copies</a></td>
-                <td>
-                    {% for author in work.authors %}
-                    <a href="{{ url_for('authors.author_detail', id=author.id) }}" class="badge bg-primary text-decoration-none">{{ author.primary_name|truncate(20) }}</a>
-                    {% endfor %}
-                </td>
-                <td>
-                    <a href="{{ url_for('books.work_detail', id=work.id) }}" class="btn btn-sm btn-primary">View</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="works-section">
+    <h2 class="section-title">All Books</h2>
+    <div class="book-grid" id="originalBooksGrid">
+        {% for book in works %}
+            {{ work_card(book) }}
+        {% endfor %}
+    </div>
 </div>
 {% else %}
-<div class="alert alert-info">
-    No works found. <a href="{{ url_for('books.book_add') }}">Add your first book</a>.
+<div class="alert-info">
+    No works found. <a href="{{ url_for('books.book_add') }}" class="alert-link">Add your first book</a>.
 </div>
 {% endif %}
+</div>
+{% endblock %}
 
+{% block scripts %}
+<script>
+    let booksSearchTimeout;
+    const booksSearchInput = document.getElementById('booksSearchInput');
+    const booksResultsContainer = document.getElementById('booksResultsContainer');
+    const booksLoadingIndicator = document.getElementById('booksLoadingIndicator');
+    const booksResultsCount = document.getElementById('booksResultsCount');
+    const originalBooksGrid = document.getElementById('originalBooksGrid');
+    let originalBooksHtml = originalBooksGrid ? originalBooksGrid.innerHTML : '';
+
+    function performBooksSearch(query) {
+        if (query.trim() === '') {
+            // Restore original content
+            booksResultsContainer.innerHTML = originalBooksGrid ? 
+                `<div class="works-section">
+                    <h2 class="section-title">All Books</h2>
+                    <div class="book-grid">${originalBooksHtml}</div>
+                </div>` : 
+                `<div class="alert-info">
+                    No works found. <a href="/books/add" class="alert-link">Add your first book</a>.
+                </div>`;
+            booksResultsCount.style.display = 'none';
+            return;
+        }
+        
+        booksLoadingIndicator.style.display = 'flex';
+        
+        fetch(`/api/search/works?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                displayBooksResults(data.works, query);
+            })
+            .catch(error => {
+                console.error('Books search error:', error);
+                booksResultsContainer.innerHTML = `
+                    <div class="alert-error">
+                        <p>An error occurred while searching. Please try again.</p>
+                    </div>
+                `;
+            })
+            .finally(() => {
+                booksLoadingIndicator.style.display = 'none';
+            });
+    }
+
+    function displayBooksResults(works, query) {
+        const count = works.length;
+        
+        if (count > 0) {
+            booksResultsCount.innerHTML = `Found ${count} work${count !== 1 ? 's' : ''}`;
+            booksResultsCount.style.display = 'block';
+        } else {
+            booksResultsCount.style.display = 'none';
+        }
+
+        if (count === 0) {
+            booksResultsContainer.innerHTML = `
+                <div class="works-section">
+                    <h2 class="section-title">Search Results</h2>
+                    <div class="alert-info">
+                        No books found matching "${query}".
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '<div class="works-section"><h2 class="section-title">Search Results</h2><div class="book-grid">';
+        works.forEach(work => {
+            const authors = work.authors && work.authors.length > 0 ? 
+                work.authors.map(a => highlightText(a, query)).join(', ') : '';
+            const title = highlightText(work.title || '', query);
+            const isbn = work.isbn ? highlightText(String(work.isbn), query) : '';
+            
+            html += `
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="card-title">
+                            <a href="/books/${work.id}">${title}</a>
+                        </h3>
+                        <div class="card-text">
+                            ${authors ? `<p><strong>Authors:</strong> ${authors}</p>` : ''}
+                            ${isbn ? `<p><strong>ISBN:</strong> ${isbn}</p>` : ''}
+                            ${work.copies_count ? `<p><strong>Copies:</strong> ${work.copies_count}</p>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div></div>';
+
+        booksResultsContainer.innerHTML = html;
+    }
+
+    function highlightText(text, query) {
+        if (!text || !query || typeof text !== 'string') return text || '';
+        
+        const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+        return text.replace(regex, '<span class="highlight">$1</span>');
+    }
+
+    function escapeRegex(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    booksSearchInput.addEventListener('input', function() {
+        const query = this.value;
+        
+        clearTimeout(booksSearchTimeout);
+        
+        booksSearchTimeout = setTimeout(() => {
+            performBooksSearch(query);
+        }, 300);
+    });
+
+    booksSearchInput.focus();
+</script>
 {% endblock %}

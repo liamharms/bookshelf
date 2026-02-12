@@ -1,65 +1,76 @@
 {% extends "base.html" %}
 
-{% block title %}{{ author.name }} - {{ super() }}{% endblock %}
+{% block title %}{{ author.primary_name }} - {{ super() }}{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>{{ author.primary_name }}</h1>
-    <div>
-        <a href="{{ url_for('authors.author_edit', id=author.id) }}" class="btn btn-primary">Edit</a>
-        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">Delete</button>
+<div class="page-header">
+    <h1 class="page-title">{{ author.primary_name }}</h1>
+    <div class="page-actions">
+        <a href="{{ url_for('authors.author_edit', id=author.id) }}" class="button button-primary">Edit</a>
+        <button class="button button-danger" onclick="openDeleteModal()">Delete</button>
     </div>
 </div>
 
-<h3 class="mt-4">Works by this author</h3>
+<h3 class="section-title">Works by this author</h3>
 
 {% if author.works|length > 0 %}
-<div class="list-group mt-3">
+<div class="works-list">
     {% for work in author.works %}
-    <a href="{{ url_for('books.work_detail', id=work.id) }}" class="list-group-item list-group-item-action">
-        <div class="d-flex w-100 justify-content-between">
-            <h5 class="mb-1">{{ work.title }}</h5>
-            <small>ISBN: {{ work.isbn }}</small>
+    <a href="{{ url_for('books.work_detail', id=work.id) }}" class="work-item">
+        <div class="work-content">
+            <h4 class="work-title">{{ work.title }}</h4>
+            <p class="work-isbn">ISBN: {{ work.isbn }}</p>
+            {% if work.description %}
+            <p class="work-description">{{ work.description|truncate(100) }}</p>
+            {% endif %}
+            {% if work.tags %}
+            <div class="work-tags">
+                {% for tag in work.tags %}
+                <span class="info-badge info-badge-secondary">{{ tag.label }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
         </div>
-        {% if work.description %}
-        <p class="mb-1">{{ work.description|truncate(100) }}</p>
-        {% endif %}
-        <small>
-            {% for tag in work.tags %}
-            <span class="badge bg-secondary">{{ tag.label }}</span>
-            {% endfor %}
-        </small>
     </a>
     {% endfor %}
 </div>
 {% else %}
-<div class="alert alert-info mt-3">
+<div class="alert-info">
     No books found for this author.
 </div>
 {% endif %}
 
-<div class="mt-4">
-    <a href="{{ url_for('authors.author_list') }}" class="btn btn-secondary">Back to Authors</a>
+<div class="form-actions">
+    <a href="{{ url_for('authors.author_list') }}" class="button button-secondary">Back to Authors</a>
 </div>
 
 <!-- Delete Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Confirm Delete</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                Are you sure you want to delete "{{ author.primary_name }}"? This will remove information from {{ author.works|length }} works.
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="{{ url_for('authors.author_delete', id=author.id) }}" method="post">
-                    <button type="submit" class="btn btn-danger">Delete</button>
-                </form>
-            </div>
+<div id="deleteModal" class="modal">
+    <div class="modal-overlay" onclick="closeDeleteModal()"></div>
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3 class="modal-title">Confirm Delete</h3>
+            <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            Are you sure you want to delete "{{ author.primary_name }}"? This will remove information from {{ author.works|length }} works.
+        </div>
+        <div class="modal-footer">
+            <button class="button button-secondary" onclick="closeDeleteModal()">Cancel</button>
+            <form action="{{ url_for('authors.author_delete', id=author.id) }}" method="post" style="display: inline;">
+                <button type="submit" class="button button-danger">Delete</button>
+            </form>
         </div>
     </div>
 </div>
+
+<script>
+function openDeleteModal() {
+    document.getElementById('deleteModal').classList.add('active');
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.remove('active');
+}
+</script>
 {% endblock %}

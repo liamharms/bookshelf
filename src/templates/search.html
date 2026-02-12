@@ -4,71 +4,70 @@
 {% block title %}Search - {{ super() }}{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-8 mx-auto">
-        <h1 class="text-center mb-4">Search Books</h1>
-        
-        <!-- Search Input -->
-        <div class="input-group mb-4">
+<div class="search-page">
+    <div class="search-header">
+        <h1 class="search-title">Search Books</h1>
+    </div>
+    
+    <!-- Search Input and Filters -->
+    <div class="search-form">
+        <div class="search-filters">
+            <div class="filter-group">
+                <label class="filter-label">Search by:</label>
+                <select id="searchType" class="filter-select">
+                    <option value="all">All Fields</option>
+                    <option value="title">Title</option>
+                    <option value="authors">Authors</option>
+                    <option value="tags">Tags</option>
+                    <option value="isbn">ISBN</option>
+                    <option value="location">Location</option>
+                    <option value="description">Description</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Date Range:</label>
+                <select id="dateRange" class="filter-select">
+                    <option value="">All Time</option>
+                    <option value="recent">Recently Added</option>
+                    <option value="this_month">This Month</option>
+                    <option value="last_month">Last Month</option>
+                </select>
+            </div>
+        </div>
+        <div class="search-container">
             <input type="text" 
                    id="searchInput" 
-                   class="form-control form-control-lg" 
+                   class="search-input" 
                    placeholder="Search books by title, author, tags, location, ISBN, or description..."
                    autocomplete="off">
-            <span class="input-group-text">
-                <i class="fas fa-search"></i>
-            </span>
+            <button class="search-button" type="button">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+            </button>
         </div>
-        
-        <!-- Loading indicator -->
-        <div id="loadingIndicator" class="text-center mb-3" style="display: none;">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-        </div>
-        
-        <!-- Results count -->
-        <div id="resultsCount" class="mb-3 text-muted" style="display: none;"></div>
-        
-        <!-- Results container -->
-        <div id="resultsContainer" class="row">
-            <div class="col-12 text-center text-muted">
-                <p>Start typing to search for books...</p>
-            </div>
+    </div>
+    
+    <!-- Loading indicator -->
+    <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+        <div class="loading-spinner"></div>
+        <span>Loading...</span>
+    </div>
+    
+    <!-- Results count -->
+    <div id="resultsCount" class="results-count" style="display: none;"></div>
+    
+    <!-- Results container -->
+    <div id="resultsContainer" class="search-results">
+        <div class="search-placeholder">
+            <p>Start typing to search for books...</p>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<style>
-    .book-card {
-        transition: transform 0.2s, box-shadow 0.2s;
-        cursor: pointer;
-        text-decoration: none;
-        color: inherit;
-        display: block;
-    }
-    .book-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        text-decoration: none;
-        color: inherit;
-    }
-    .highlight {
-        background-color: rgba(255, 193, 7, 0.3);
-        font-weight: bold;
-        padding: 1px 2px;
-        border-radius: 2px;
-    }
-    .loading {
-        opacity: 0.6;
-    }
-    .badge {
-        font-size: 0.75em;
-    }
-</style>
-
 <script>
     let searchTimeout;
     const searchInput = document.getElementById('searchInput');
@@ -76,23 +75,32 @@
     const loadingIndicator = document.getElementById('loadingIndicator');
     const resultsCount = document.getElementById('resultsCount');
 
-    // Debounced search function
-    function performSearch(query) {
+    // Debounced search function with filters
+    function performSearch(query, searchType = 'all', dateRange = '') {
         if (query.trim() === '') {
             resultsContainer.innerHTML = `
-                <div class="col-12 text-center text-muted">
+                <div class="search-placeholder">
                     <p>Start typing to search for books...</p>
                 </div>
             `;
             resultsCount.style.display = 'none';
             return;
         }
-
+        
         // Show loading
-        loadingIndicator.style.display = 'block';
+        loadingIndicator.style.display = 'flex';
         resultsContainer.classList.add('loading');
-
-        fetch(`/api/search?q=${encodeURIComponent(query)}`)
+        
+        // Build search URL with filters
+        let searchUrl = `/api/search?q=${encodeURIComponent(query)}`;
+        if (searchType && searchType !== 'all') {
+            searchUrl += `&type=${encodeURIComponent(searchType)}`;
+        }
+        if (dateRange && dateRange !== '') {
+            searchUrl += `&date=${encodeURIComponent(dateRange)}`;
+        }
+        
+        fetch(searchUrl)
             .then(response => response.json())
             .then(data => {
                 displayResults(data.books, query);
@@ -100,10 +108,8 @@
             .catch(error => {
                 console.error('Search error:', error);
                 resultsContainer.innerHTML = `
-                    <div class="col-12">
-                        <div class="alert alert-danger">
-                            An error occurred while searching. Please try again.
-                        </div>
+                    <div class="search-error">
+                        <p>An error occurred while searching. Please try again.</p>
                     </div>
                 `;
             })
@@ -127,46 +133,49 @@
 
         if (count === 0) {
             resultsContainer.innerHTML = `
-                <div class="col-12 text-center text-muted">
+                <div class="search-placeholder">
                     <p>No books found matching "${query}"</p>
                 </div>
             `;
             return;
         }
 
-        let html = '';
+        let html = '<div class="search-grid">';
         books.forEach(book => {
             const authors = book.authors && book.authors.length > 0 ? 
                 book.authors.map(a => a.name || '').join(', ') : '';
             const tags = book.tags && book.tags.length > 0 ? 
-                book.tags.map(t => `<span class="badge bg-secondary me-1">${highlightText(String(t.label || ''), query)}</span>`).join('') : '';
+                book.tags.map(t => `<span class="info-badge info-badge-secondary">${highlightText(String(t.label || ''), query)}</span>`).join('') : '';
             const location = book.location && book.location.name ? String(book.location.name) : 'No location';
             const description = book.description ? 
                 (book.description.length > 150 ? book.description.substring(0, 150) + '...' : book.description) : 
                 'No description available';
 
             html += `
-                <div class="col-md-6 mb-4">
-                    <a href="/books/${book.id}" class="book-card">
-                        <div class="card h-100">
+                <div class="search-result-card">
+                    <a href="/books/${book.id}" class="search-result-link">
+                        <div class="card">
                             ${book.cover_url ? `
-                                <img src="${book.cover_url}" class="card-img-top" alt="${book.title || ''}" style="height: 200px; object-fit: cover;">
+                                <div class="search-result-image">
+                                    <img src="${book.cover_url}" alt="${book.title || ''}">
+                                </div>
                             ` : ''}
                             <div class="card-body">
-                                <h5 class="card-title">${highlightText(String(book.title || ''), query)}</h5>
-                                <p class="card-text">
-                                    ${authors ? `<strong>Authors:</strong> ${highlightText(String(authors), query)}<br>` : ''}
-                                    <strong>Location:</strong> ${highlightText(String(location), query)}<br>
-                                    ${book.isbn ? `<strong>ISBN:</strong> ${highlightText(String(book.isbn), query)}<br>` : ''}
-                                    <small class="text-muted">${highlightText(String(description), query)}</small>
-                                </p>
-                                ${tags ? `<div class="mt-2">${tags}</div>` : ''}
+                                <h3 class="card-title">${highlightText(String(book.title || ''), query)}</h3>
+                                <div class="card-text">
+                                    ${authors ? `<p><strong>Authors:</strong> ${highlightText(String(authors), query)}</p>` : ''}
+                                    <p><strong>Location:</strong> ${highlightText(String(location), query)}</p>
+                                    ${book.isbn ? `<p><strong>ISBN:</strong> ${highlightText(String(book.isbn), query)}</p>` : ''}
+                                    <p class="description">${highlightText(String(description), query)}</p>
+                                </div>
+                                ${tags ? `<div class="search-result-tags">${tags}</div>` : ''}
                             </div>
                         </div>
                     </a>
                 </div>
             `;
         });
+        html += '</div>';
 
         resultsContainer.innerHTML = html;
     }
@@ -184,17 +193,34 @@
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
-    // Event listener for search input
+    // Event listeners for search input and filters
     searchInput.addEventListener('input', function() {
         const query = this.value;
+        const searchType = document.getElementById('searchType').value;
+        const dateRange = document.getElementById('dateRange').value;
         
         // Clear previous timeout
         clearTimeout(searchTimeout);
         
         // Set new timeout for debounced search
         searchTimeout = setTimeout(() => {
-            performSearch(query);
+            performSearch(query, searchType, dateRange);
         }, 300); // Wait 300ms after user stops typing
+    });
+    
+    // Filter change listeners
+    document.getElementById('searchType').addEventListener('change', function() {
+        const query = searchInput.value;
+        const searchType = this.value;
+        const dateRange = document.getElementById('dateRange').value;
+        performSearch(query, searchType, dateRange);
+    });
+    
+    document.getElementById('dateRange').addEventListener('change', function() {
+        const query = searchInput.value;
+        const searchType = document.getElementById('searchType').value;
+        const dateRange = this.value;
+        performSearch(query, searchType, dateRange);
     });
 
     // Focus on search input when page loads

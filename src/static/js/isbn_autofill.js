@@ -94,13 +94,8 @@ async function processAuthors(authorNames) {
         );
         
         if (exactMatch) {
-            // Select the existing author
-            if (authorsSelect.tomselect) {
-                authorsSelect.tomselect.addItem(exactMatch.id);
-            } else {
-                const option = Array.from(authorsSelect.options).find(o => o.value === exactMatch.id);
-                if (option) option.selected = true;
-            }
+            // Select the existing author using our new multi-select
+            selectMultiChoice('authors', exactMatch.id);
         } else {
             // Search for similar authors
             const similarAuthors = await searchSimilarAuthors(authorName);
@@ -129,13 +124,8 @@ async function processTags(tagLabels) {
         );
         
         if (exactMatch) {
-            // Select the existing tag
-            if (tagsSelect.tomselect) {
-                tagsSelect.tomselect.addItem(exactMatch.id);
-            } else {
-                const option = Array.from(tagsSelect.options).find(o => o.value === exactMatch.id);
-                if (option) option.selected = true;
-            }
+            // Select the existing tag using our new multi-select
+            selectMultiChoice('tags', exactMatch.id);
         } else {
             // Search for similar tags
             const similarTags = await searchSimilarTags(tagLabel);
@@ -178,31 +168,30 @@ async function searchSimilarTags(label) {
 }
 
 function showBatchMatchModal() {
-    // Create modal HTML
+    // Create modal HTML using the application's modal structure
     const modalHtml = `
-        <div class="modal fade" id="batchMatchModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Match or Add Authors and Tags</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        ${unmatchedAuthors.length > 0 ? `
-                            <h6 class="mb-3">Authors</h6>
-                            ${unmatchedAuthors.map((author, idx) => createMatchRow('author', author, idx)).join('')}
-                            <hr class="my-4">
-                        ` : ''}
-                        
-                        ${unmatchedTags.length > 0 ? `
-                            <h6 class="mb-3">Tags</h6>
-                            ${unmatchedTags.map((tag, idx) => createMatchRow('tag', tag, idx)).join('')}
-                        ` : ''}
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-primary" onclick="processBatchSelections()">Apply Selections</button>
-                    </div>
+        <div id="batchMatchModal" class="modal">
+            <div class="modal-overlay" onclick="closeBatchMatchModal()"></div>
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3 class="modal-title">Match or Add Authors and Tags</h3>
+                    <button class="modal-close" onclick="closeBatchMatchModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    ${unmatchedAuthors.length > 0 ? `
+                        <h6 style="margin-bottom: 1rem; font-weight: bold;">Authors</h6>
+                        ${unmatchedAuthors.map((author, idx) => createMatchRow('author', author, idx)).join('')}
+                        <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--border-color);">
+                    ` : ''}
+                    
+                    ${unmatchedTags.length > 0 ? `
+                        <h6 style="margin-bottom: 1rem; font-weight: bold;">Tags</h6>
+                        ${unmatchedTags.map((tag, idx) => createMatchRow('tag', tag, idx)).join('')}
+                    ` : ''}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="button button-secondary" onclick="closeBatchMatchModal()">Cancel</button>
+                    <button type="button" class="button button-primary" onclick="processBatchSelections()">Apply Selections</button>
                 </div>
             </div>
         </div>
@@ -215,9 +204,17 @@ function showBatchMatchModal() {
     // Add modal to page
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    // Show modal
-    const modal = new bootstrap.Modal(document.getElementById('batchMatchModal'));
-    modal.show();
+    // Show modal using the application's method
+    document.getElementById('batchMatchModal').classList.add('active');
+}
+
+function closeBatchMatchModal() {
+    const modal = document.getElementById('batchMatchModal');
+    if (modal) {
+        modal.classList.remove('active');
+        // Remove modal from DOM after closing
+        setTimeout(() => modal.remove(), 300);
+    }
 }
 
 function createMatchRow(type, item, index) {
@@ -225,43 +222,40 @@ function createMatchRow(type, item, index) {
     const hasSimilar = item.similar && item.similar.length > 0;
     
     return `
-        <div class="card mb-3" data-type="${type}" data-index="${index}">
-            <div class="card-body">
-                <div class="mb-2">
-                    <strong>${name}</strong>
-                    <span class="badge bg-secondary ms-2">From ISBN data</span>
-                </div>
-                
-                ${hasSimilar ? `
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="${type}_${index}" id="${type}_${index}_similar" value="similar" checked>
-                        <label class="form-check-label" for="${type}_${index}_similar">
-                            Use similar existing ${type}
-                        </label>
-                    </div>
-                    <select class="form-select form-select-sm ms-4 mb-2" id="${type}_${index}_select">
+        <div style="border: 1px solid var(--border-color); padding: 1rem; margin-bottom: 1rem; background-color: var(--bg-primary);" data-type="${type}" data-index="${index}">
+            <div style="margin-bottom: 0.5rem;">
+                <strong>${name}</strong>
+                <span style="background-color: var(--bg-secondary); color: var(--text-secondary); padding: 0.25rem 0.5rem; margin-left: 0.5rem; font-size: 0.8rem;">From ISBN data</span>
+            </div>
+            
+            ${hasSimilar ? `
+                <div style="margin-bottom: 0.5rem;">
+                    <label style="display: flex; align-items: center; margin-bottom: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="${type}_${index}" value="similar" checked style="margin-right: 0.5rem;">
+                        Use similar existing ${type}
+                    </label>
+                    <select id="${type}_${index}_select" style="margin-left: 1.5rem; margin-bottom: 0.5rem; width: 100%; max-width: 300px; padding: 0.5rem; background-color: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary);">
                         ${item.similar.map(s => `
                             <option value="${s.id}">
-                                ${type === 'author' ? s.name : s.label} 
-                                <span class="text-muted">(${s.score}% match)</span>
+                                ${type === 'author' ? s.name : s.label} (${s.score}% match)
                             </option>
                         `).join('')}
                     </select>
-                ` : ''}
-                
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="radio" name="${type}_${index}" id="${type}_${index}_new" value="new" ${!hasSimilar ? 'checked' : ''}>
-                    <label class="form-check-label" for="${type}_${index}_new">
-                        Add as new ${type}
-                    </label>
                 </div>
-                
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="${type}_${index}" id="${type}_${index}_ignore" value="ignore">
-                    <label class="form-check-label" for="${type}_${index}_ignore">
-                        Ignore (don't add)
-                    </label>
-                </div>
+            ` : ''}
+            
+            <div style="margin-bottom: 0.5rem;">
+                <label style="display: flex; align-items: center; margin-bottom: 0.5rem; cursor: pointer;">
+                    <input type="radio" name="${type}_${index}" value="new" ${!hasSimilar ? 'checked' : ''} style="margin-right: 0.5rem;">
+                    Add as new ${type}
+                </label>
+            </div>
+            
+            <div style="margin-bottom: 0;">
+                <label style="display: flex; align-items: center; cursor: pointer;">
+                    <input type="radio" name="${type}_${index}" value="ignore" style="margin-right: 0.5rem;">
+                    Ignore (don't add)
+                </label>
             </div>
         </div>
     `;
@@ -283,25 +277,15 @@ async function processBatchSelections() {
             const selectEl = card.querySelector(`#author_${i}_select`);
             const authorId = selectEl.value;
             
-            // Add to form
-            if (authorsSelect.tomselect) {
-                authorsSelect.tomselect.addItem(authorId);
-            } else {
-                const option = Array.from(authorsSelect.options).find(o => o.value === authorId);
-                if (option) option.selected = true;
-            }
+            // Add to form using our new multi-select
+            selectMultiChoice('authors', authorId);
         } else {
             // Create new author
             const newAuthor = await createAuthor(unmatchedAuthors[i].name);
             if (newAuthor) {
-                // Add to form options and select it
-                if (authorsSelect.tomselect) {
-                    authorsSelect.tomselect.addOption({value: newAuthor.id, text: newAuthor.name});
-                    authorsSelect.tomselect.addItem(newAuthor.id);
-                } else {
-                    const option = new Option(newAuthor.name, newAuthor.id, true, true);
-                    authorsSelect.add(option);
-                }
+                // Add to form options and select it using our new multi-select
+                addMultiSelectOption('authors', newAuthor.id, newAuthor.name);
+                selectMultiChoice('authors', newAuthor.id);
             }
         }
     }
@@ -318,32 +302,21 @@ async function processBatchSelections() {
             const selectEl = card.querySelector(`#tag_${i}_select`);
             const tagId = selectEl.value;
             
-            // Add to form
-            if (tagsSelect.tomselect) {
-                tagsSelect.tomselect.addItem(tagId);
-            } else {
-                const option = Array.from(tagsSelect.options).find(o => o.value === tagId);
-                if (option) option.selected = true;
-            }
+            // Add to form using our new multi-select
+            selectMultiChoice('tags', tagId);
         } else {
             // Create new tag
             const newTag = await createTag(unmatchedTags[i].label);
             if (newTag) {
-                // Add to form options and select it
-                if (tagsSelect.tomselect) {
-                    tagsSelect.tomselect.addOption({value: newTag.id, text: newTag.label});
-                    tagsSelect.tomselect.addItem(newTag.id);
-                } else {
-                    const option = new Option(newTag.label, newTag.id, true, true);
-                    tagsSelect.add(option);
-                }
+                // Add to form options and select it using our new multi-select
+                addMultiSelectOption('tags', newTag.id, newTag.label);
+                selectMultiChoice('tags', newTag.id);
             }
         }
     }
     
-    // Close modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('batchMatchModal'));
-    modal.hide();
+    // Close modal using the application's method
+    closeBatchMatchModal();
 }
 
 async function createAuthor(name) {
@@ -374,6 +347,58 @@ async function createTag(label) {
         console.error('Error creating tag:', error);
         return null;
     }
+}
+
+// Helper functions to interact with our new multi-select components
+function selectMultiChoice(fieldName, value) {
+    const container = document.querySelector(`[data-field="${fieldName}"]`);
+    if (!container) return;
+    
+    const input = container.querySelector('.multi-select-input');
+    const choice = {
+        value: value.toString(),
+        label: getChoiceLabel(fieldName, value)
+    };
+    
+    // Trigger the selection through the MultiSelect instance
+    const multiSelectInstance = container.multiSelectInstance;
+    if (multiSelectInstance) {
+        multiSelectInstance.selectChoice(value);
+    }
+}
+
+function addMultiSelectOption(fieldName, value, label) {
+    const container = document.querySelector(`[data-field="${fieldName}"]`);
+    if (!container) return;
+    
+    // Add option to hidden select field
+    const hiddenSelect = container.querySelector('select[multiple]');
+    if (hiddenSelect) {
+        const option = new Option(label, value.toString(), false, false);
+        hiddenSelect.add(option);
+    }
+    
+    // Update choices array in MultiSelect instance
+    const multiSelectInstance = container.multiSelectInstance;
+    if (multiSelectInstance) {
+        multiSelectInstance.choices.push({
+            value: value.toString(),
+            label: label
+        });
+    }
+}
+
+function getChoiceLabel(fieldName, value) {
+    const container = document.querySelector(`[data-field="${fieldName}"]`);
+    if (!container) return value;
+    
+    const hiddenSelect = container.querySelector('select[multiple]');
+    if (hiddenSelect) {
+        const option = Array.from(hiddenSelect.options).find(o => o.value === value.toString());
+        return option ? option.textContent : value;
+    }
+    
+    return value;
 }
 
 // Initialize on DOM ready

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros.html" import render_tree %}
 
 {% block title %}Locations - {{ super() }}{% endblock %}
 
@@ -8,44 +9,144 @@
     <a href="{{ url_for('locations.location_add') }}" class="button button-primary">Add New Location</a>
 </div>
 
-{% if locations %}
-<div class="tree-container">
-    <ul class="tree-root">
-        {% macro render_location(location, is_last=False, depth=0) %}
-        <li class="tree-item" data-item-id="{{ location.id }}" data-depth="{{ depth }}" data-is-last="{{ is_last }}">
-            <div class="tree-node">
-                <div class="tree-lines" data-depth="{{ depth }}"></div>
-                <button class="tree-toggle {% if not location.children %}tree-toggle-hidden{% endif %}" 
-                        data-tree-toggle="{{ location.id }}">
-                    {% if location.children %}▼{% endif %}
-                </button>
-                <a href="{{ url_for('locations.location_detail', id=location.id) }}" class="tree-name">{{ location.name }}</a>
-                <span class="tree-info">{{ get_total_books(location) }} book(s)</span>
-                <a href="{{ url_for('locations.location_detail', id=location.id) }}" class="button button-small button-secondary">View</a>
-            </div>
-            {% if location.children %}
-            <ul class="tree-children" data-tree-children="{{ location.id }}">
-                {% for child in location.children %}
-                    {{ render_location(child, loop.last, depth + 1) }}
-                {% endfor %}
-            </ul>
-            {% endif %}
-        </li>
-        {% endmacro %}
-        
-        {% for location in locations %}
-            {% if not location.parent_id %}
-                {{ render_location(location, loop.last, 0) }}
-            {% endif %}
-        {% endfor %}
-    </ul>
+<!-- Dynamic Search -->
+<div class="search-form">
+    <div class="search-container">
+        <input type="text" id="locationsSearchInput" class="search-input" placeholder="Search locations by name or description..." aria-label="Search">
+        <button class="search-button" type="button">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+            </svg>
+        </button>
+    </div>
 </div>
 
+<!-- Loading indicator -->
+<div id="locationsLoadingIndicator" class="loading-indicator" style="display: none;">
+    <div class="loading-spinner"></div>
+    <span>Searching...</span>
+</div>
+
+<!-- Results count -->
+<div id="locationsResultsCount" class="results-count" style="display: none;"></div>
+
+<div id="locationsResultsContainer">
+{% if locations %}
+    {% set root_locations = locations | selectattr('parent_id', 'equalto', none) | list %}
+    <div id="originalLocationsTree">
+        {{ render_tree(root_locations, 'name', 'total_books', 'locations.location_detail') }}
+    </div>
 {% else %}
 <div class="alert-info">
     No locations found. <a href="{{ url_for('locations.location_add') }}" class="alert-link">Add your first location</a>.
 </div>
 {% endif %}
+</div>
 
 <script src="{{ url_for('static', filename='js/tree.js') }}"></script>
+
+<script>
+    let locationsSearchTimeout;
+    const locationsSearchInput = document.getElementById('locationsSearchInput');
+    const locationsResultsContainer = document.getElementById('locationsResultsContainer');
+    const locationsLoadingIndicator = document.getElementById('locationsLoadingIndicator');
+    const locationsResultsCount = document.getElementById('locationsResultsCount');
+    const originalLocationsTree = document.getElementById('originalLocationsTree');
+    let originalLocationsHtml = originalLocationsTree ? originalLocationsTree.innerHTML : '';
+
+    function performLocationsSearch(query) {
+        if (query.trim() === '') {
+            locationsResultsContainer.innerHTML = originalLocationsTree ? 
+                originalLocationsHtml : 
+                `<div class="alert-info">
+                    No locations found. <a href="/locations/add" class="alert-link">Add your first location</a>.
+                </div>`;
+            locationsResultsCount.style.display = 'none';
+            return;
+        }
+        
+        locationsLoadingIndicator.style.display = 'flex';
+        
+        fetch(`/api/search/locations?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                displayLocationsResults(data.locations, query);
+            })
+            .catch(error => {
+                console.error('Locations search error:', error);
+                locationsResultsContainer.innerHTML = `
+                    <div class="alert-error">
+                        <p>An error occurred while searching. Please try again.</p>
+                    </div>
+                `;
+            })
+            .finally(() => {
+                locationsLoadingIndicator.style.display = 'none';
+            });
+    }
+
+    function displayLocationsResults(locations, query) {
+        const count = locations.length;
+        
+        if (count > 0) {
+            locationsResultsCount.innerHTML = `Found ${count} location${count !== 1 ? 's' : ''}`;
+            locationsResultsCount.style.display = 'block';
+        } else {
+            locationsResultsCount.style.display = 'none';
+        }
+
+        if (count === 0) {
+            locationsResultsContainer.innerHTML = `
+                <div class="alert-info">
+                    No locations found matching "${query}".
+                </div>
+            `;
+            return;
+        }
+
+        let html = '<div class="tree-container">';
+        locations.forEach(location => {
+            const name = highlightText(location.name || '', query);
+            const description = location.description ? highlightText(location.description.substring(0, 100), query) : '';
+            const copyCount = location.copy_count || 0;
+            
+            html += `
+                <div class="tree-item">
+                    <div class="tree-content">
+                        <a href="/locations/${location.id}" class="tree-link">${name}</a>
+                        <span class="tree-count">(${copyCount} copies)</span>
+                    </div>
+                    ${description ? `<div class="tree-description">${description}${location.description.length > 100 ? '...' : ''}</div>` : ''}
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        locationsResultsContainer.innerHTML = html;
+    }
+
+    function highlightText(text, query) {
+        if (!text || !query || typeof text !== 'string') return text || '';
+        
+        const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+        return text.replace(regex, '<span class="highlight">$1</span>');
+    }
+
+    function escapeRegex(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    locationsSearchInput.addEventListener('input', function() {
+        const query = this.value;
+        
+        clearTimeout(locationsSearchTimeout);
+        
+        locationsSearchTimeout = setTimeout(() => {
+            performLocationsSearch(query);
+        }, 300);
+    });
+
+    locationsSearchInput.focus();
+</script>
 {% endblock %}

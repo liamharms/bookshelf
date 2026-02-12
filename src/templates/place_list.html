@@ -3,14 +3,14 @@
 {% block title %}Places - {{ super() }}{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Places</h1>
-    <a href="{{ url_for('places.place_add') }}" class="btn btn-success">Add New Place</a>
+<div class="page-header">
+    <h1 class="page-title">Places</h1>
+    <a href="{{ url_for('places.place_add') }}" class="button button-primary">Add New Place</a>
 </div>
 
 {% if places %}
-<div class="table-responsive">
-    <table class="table table-striped">
+<div class="table-container">
+    <table class="data-table">
         <thead>
             <tr>
                 <th>Place</th>
@@ -20,9 +20,9 @@
         <tbody>
             {% for place in places %}
             <tr>
-                <td><a href="{{ url_for('places.place_detail', id=place.id) }}">{{ place.name }}</a></td>
+                <td><a href="{{ url_for('places.place_detail', id=place.id) }}" class="table-link">{{ place.name }}</a></td>
                 <td>
-                    <a href="{{ url_for('places.place_detail', id=place.id) }}" class="btn btn-sm btn-info">View</a>
+                    <a href="{{ url_for('places.place_detail', id=place.id) }}" class="button button-small button-primary">View</a>
                 </td>
             </tr>
             {% endfor %}
@@ -30,8 +30,8 @@
     </table>
 </div>
 {% else %}
-<div class="alert alert-info">
-    No places found. <a href="{{ url_for('places.place_add') }}">Add your first place</a>.
+<div class="alert-info">
+    No places found. <a href="{{ url_for('places.place_add') }}" class="alert-link">Add your first place</a>.
 </div>
 {% endif %}
 {% endblock %}

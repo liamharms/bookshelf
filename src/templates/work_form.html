@@ -3,74 +3,239 @@
 {% block title %}{{ title }} - {{ super() }}{% endblock %}
 
 {% block content %}
-<h1>{{ title }}</h1>
+<div class="form-container">
+    <h1 class="form-title">{{ title }}</h1>
 
-<link rel="stylesheet" href="/static/css/tom-select.default.css">
-<script src="/static/js/tom-select.complete.js"></script>
-<script src="/static/js/tom-select.js"></script>
-<script src="/static/js/isbn_autofill.js"></script>
+    <script src="/static/js/book_form.js"></script>
+    <script src="/static/js/isbn_autofill.js"></script>
 
-<form method="POST" class="mt-4">
-    {{ form.hidden_tag() }}
-    
-    <div class="mb-3">
-        {{ form.title.label(class="form-label") }}
-        {{ form.title(class="form-control") }}
-        {% if form.title.errors %}
-            {% for error in form.title.errors %}
-                <div class="text-danger">{{ error }}</div>
-            {% endfor %}
-        {% endif %}
-    </div>
-    
-    <div class="mb-3">
-        {{ form.isbn.label(class="form-label") }}
-        {{ form.isbn(class="form-control", autofocus=True) }}
-        {% if form.isbn.errors %}
-            {% for error in form.isbn.errors %}
-                <div class="text-danger">{{ error }}</div>
-            {% endfor %}
-        {% endif %}
-    </div>
-
-    <div class="mb-3">
-        <div class="d-flex justify-content-between align-items-center">
-            {{ form.authors.label(class="form-label") }}
-            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addAuthorModal">
-                <i class="fas fa-plus"></i> Add Author
-            </button>
+    <div class="form-layout">
+        <!-- Cover Preview Section -->
+        <div class="cover-preview-section">
+            <div class="cover-preview-container">
+                <!-- Include placeholder SVG from macros -->
+                <div id="image_preview_container" class="image-preview-container">
+                    <img id="image_preview" src="" alt="Cover preview" class="image-preview" style="display: none;">
+                    <svg id="image_placeholder" class="book-cover-placeholder" viewBox="0 0 100 120" fill="none">
+                        <rect width="100" height="120" fill="var(--bg-hover)"/>
+                        <rect x="10" y="15" width="80" height="2" fill="var(--border-color)"/>
+                        <rect x="10" y="25" width="60" height="2" fill="var(--border-color)"/>
+                        <rect x="10" y="35" width="70" height="2" fill="var(--border-color)"/>
+                        <path d="M30 60 L50 80 L70 60" stroke="var(--border-color)" stroke-width="2" fill="none"/>
+                    </svg>
+                </div>
+                <div class="file-upload-section">
+                    <label for="cover_image_file" class="file-upload-label">
+                        <span>Upload image</span>
+                        <input type="file" id="cover_image_file" accept="image/*" onchange="previewImage(event)">
+                    </label>
+                </div>
+            </div>
         </div>
-        {{ form.authors(class="form-select tom-select", multiple=true, placeholder="Search authors...") }}
-    </div>
 
-    <div class="mb-3">
-        {{ form.publisher.label(class="form-label") }}
-        {{ form.publisher(class="form-control") }}
-    </div>
-    
-    <div class="mb-3">
-        {{ form.description.label(class="form-label") }}
-        {{ form.description(class="form-control") }}
-    </div>
-    
-    <div class="mb-3">
-        <div class="d-flex justify-content-between align-items-center">
-            {{ form.tags.label(class="form-label") }}
-            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addTagModal">
-                <i class="fas fa-plus"></i> Add Tag
-            </button>
+        <!-- Form Fields Section -->
+        <div class="form-fields-section">
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                
+                <div class="form-group">
+                    {{ form.title.label(class="form-label") }}
+                    {{ form.title(class="form-control") }}
+                    {% if form.title.errors %}
+                        {% for error in form.title.errors %}
+                            <div class="form-error">{{ error }}</div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.isbn.label(class="form-label") }}
+                    {{ form.isbn(class="form-control", autofocus=True) }}
+                    {% if form.isbn.errors %}
+                        {% for error in form.isbn.errors %}
+                            <div class="form-error">{{ error }}</div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <div class="form-group-header">
+                        {{ form.authors.label(class="form-label") }}
+                        <button type="button" class="button button-small button-secondary" onclick="openAddAuthorModal()">
+                            + Add Author
+                        </button>
+                    </div>
+                    <div class="multi-select-container" data-field="authors">
+                        <div class="multi-select-input-wrapper">
+                            <div class="multi-select-tags"></div>
+                            <input type="text" class="multi-select-input" placeholder="Search authors..." autocomplete="off">
+                        </div>
+                        <div class="multi-select-dropdown" style="display: none;"></div>
+                        {{ form.authors(style="display: none;") }}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    {{ form.publisher.label(class="form-label") }}
+                    {{ form.publisher(class="form-control") }}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.description.label(class="form-label") }}
+                    {{ form.description(class="form-control") }}
+                </div>
+                
+                <div class="form-group">
+                    <div class="form-group-header">
+                        {{ form.tags.label(class="form-label") }}
+                        <button type="button" class="button button-small button-secondary" onclick="openAddTagModal()">
+                            + Add Tag
+                        </button>
+                    </div>
+                    <div class="multi-select-container" data-field="tags">
+                        <div class="multi-select-input-wrapper">
+                            <div class="multi-select-tags"></div>
+                            <input type="text" class="multi-select-input" placeholder="Search tags..." autocomplete="off">
+                        </div>
+                        <div class="multi-select-dropdown" style="display: none;"></div>
+                        {{ form.tags(style="display: none;") }}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    {{ form.cover_url.label(class="form-label") }}
+                    {{ form.cover_url(class="form-control", id="cover_url_input") }}
+                </div>
+                
+                <div class="form-actions">
+                    {{ form.submit(class="button button-primary") }}
+                    <a href="{{ url_for('books.work_list') }}" class="button button-secondary">Cancel</a>
+                </div>
+            </form>
         </div>
-        {{ form.tags(class="form-select tom-select", multiple=true, placeholder="Search tags...") }}
     </div>
+</div>
 
-    <div class="mb-3">
-        {{ form.cover_url.label(class="form-label") }}
-        {{ form.cover_url(class="form-control") }}
-    </div>
+<script>
+function openAddAuthorModal() {
+    // This would open a modal to add a new author
+    // Implementation depends on existing modal structure
+    console.log('Open add author modal');
+}
+
+function openAddTagModal() {
+    // This would open a modal to add a new tag
+    // Implementation depends on existing modal structure
+    console.log('Open add tag modal');
+}
+
+function previewImage(event) {
+    const file = event.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById('image_preview');
+            const placeholder = document.getElementById('image_placeholder');
+            const coverUrlInput = document.getElementById('cover_url_input');
+            
+            preview.src = e.target.result;
+            placeholder.style.display = 'none';
+            preview.style.display = 'block';
+            
+            // Store that this is from file upload
+            coverUrlInput.dataset.imageFile = 'true';
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function showPlaceholder() {
+    const preview = document.getElementById('image_preview');
+    const placeholder = document.getElementById('image_placeholder');
     
-    <div class="mb-3">
-        {{ form.submit(class="btn btn-primary") }}
-        <a href="{{ url_for('books.work_list') }}" class="btn btn-secondary">Cancel</a>
-    </div>
-</form>
+    preview.style.display = 'none';
+    placeholder.style.display = 'block';
+}
+
+function showUrlPreview(url) {
+    const preview = document.getElementById('image_preview');
+    const placeholder = document.getElementById('image_placeholder');
+    
+    if (url && url.trim() !== '') {
+        preview.onerror = null;
+        preview.onload = null;
+        
+        preview.onerror = function() {
+            console.error('Failed to load image from URL:', url);
+            showPlaceholder();
+        };
+        
+        preview.onload = function() {
+            placeholder.style.display = 'none';
+            preview.style.display = 'block';
+        };
+        
+        preview.src = url;
+        placeholder.style.display = 'none';
+    } else {
+        showPlaceholder();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const fileInput = document.getElementById('cover_image_file');
+    const coverUrlInput = document.getElementById('cover_url_input');
+    
+    if (form && fileInput && coverUrlInput) {
+        coverUrlInput.addEventListener('input', function(e) {
+            const url = e.target.value.trim();
+            showUrlPreview(url);
+        });
+        
+        coverUrlInput.addEventListener('blur', function(e) {
+            const url = e.target.value.trim();
+            if (url) {
+                showUrlPreview(url);
+            } else {
+                showPlaceholder();
+            }
+        });
+        
+        showPlaceholder();
+        
+        form.addEventListener('submit', async function(e) {
+            const imageFile = fileInput.files[0];
+            if (imageFile && coverUrlInput.dataset.imageFile) {
+                e.preventDefault();
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('image', imageFile);
+                    
+                    const response = await fetch('/api/upload-cover', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        coverUrlInput.value = result.url;
+                        coverUrlInput.dataset.imageFile = 'false';
+                        form.submit();
+                    } else {
+                        console.error('Upload failed:', result.error);
+                        alert('Failed to upload image: ' + result.error);
+                    }
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    alert('Failed to upload image');
+                }
+            }
+        });
+    }
+});
+</script>
+
+<script src="/static/js/multi-select.js"></script>
 {% endblock %}

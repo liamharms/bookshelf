@@ -1,53 +1,35 @@
 {% extends "base.html" %}
+{% from "macros.html" import book_card %}
+
+{% block title %}Copies - {{ super() }}{% endblock %}
 
 {% block content %}
-
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Copies</h1>
+<div class="page-header">
+    <h1 class="page-title">Copies</h1>
 </div>
 
 <!-- Search -->
-<form action="{{ url_for('main.search_page') }}" method="GET" class="mb-4">
-    <div class="input-group">
-        <input type="text" name="q" class="form-control" placeholder="Search copies..." aria-label="Search">
-        <!-- <button class="btn btn-light" type="submit">
-            <i class="fas fa-search"></i>
-        </button> -->
+<form action="{{ url_for('main.search_page') }}" method="GET" class="search-form">
+    <div class="search-container">
+        <input type="text" name="q" class="search-input" placeholder="Search copies..." aria-label="Search">
+        <button class="search-button" type="submit">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+            </svg>
+        </button>
     </div>
 </form>
 
 {% if copies %}
-<div class="table-responsive">
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>Location</th>
-                <th>Author(s)</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for copy in copies %}
-            <tr>
-                <td><a href="{{ url_for('books.copy_detail', id=copy.id) }}">{{ copy.work.title }}</a></td>
-                <td>{{ copy.location.name }}</td>
-                <td>
-                    {% for author in copy.work.authors %}
-                    <a href="{{ url_for('authors.author_detail', id=author.id) }}" class="badge bg-primary text-decoration-none">{{ author.primary_name|truncate(20) }}</a>
-                    {% endfor %}
-                </td>
-                <td>
-                    <a href="{{ url_for('books.copy_detail', id=copy.id) }}" class="btn btn-sm btn-primary">View</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="book-grid">
+    {% for copy in copies %}
+    {{ book_card(copy) }}
+    {% endfor %}
 </div>
 {% else %}
-<div class="alert alert-info">
-    No copies found. <a href="{{ url_for('books.copy_add') }}">Add your first copy</a>.
+<div class="alert-info">
+    No copies found. <a href="{{ url_for('books.copy_add') }}" class="alert-link">Add your first copy</a>.
 </div>
 {% endif %}
 

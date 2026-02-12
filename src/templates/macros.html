@@ -29,3 +29,73 @@
     </div>
 </a>
 {% endmacro %}
+
+{% macro work_card(work) %}
+<a href="{{ url_for('books.work_detail', id=work.id) }}" class="book-card">
+    <div class="book-card-inner">
+        {% if work.cover_url %}
+        <img src="{{ work.cover_url }}" class="book-cover" alt="{{ work.title }}">
+        {% else %}
+        <svg class="book-cover-placeholder" viewBox="0 0 100 120" fill="none">
+            <rect width="100" height="120" fill="var(--bg-hover)"/>
+            <rect x="10" y="15" width="80" height="2" fill="var(--border-color)"/>
+            <rect x="10" y="25" width="60" height="2" fill="var(--border-color)"/>
+            <rect x="10" y="35" width="70" height="2" fill="var(--border-color)"/>
+            <path d="M30 60 L50 80 L70 60" stroke="var(--border-color)" stroke-width="2" fill="none"/>
+        </svg>
+        {% endif %}
+        <div class="book-info-overlay">
+            <h4 class="book-title">{{ work.title }}</h4>
+            <div class="book-authors">
+                {% for author in work.authors %}
+                <span class="author-name">{{ author.primary_name }}</span>{% if not loop.last %}, {% endif %}
+                {% endfor %}
+            </div>
+            <p class="book-location">{{ work.copies|length }} cop{{ 'ies' if work.copies|length != 1 else 'y'}}</p>
+            {% if work.description %}
+            <p class="book-description">{{ work.description }}</p>
+            {% endif %}
+        </div>
+    </div>
+</a>
+{% endmacro %}
+
+{% macro render_tree_item(item, item_name, item_count, detail_url, children, endpoint, is_last=False, depth=0) %}
+<li class="tree-item" data-item-id="{{ item.id }}" data-depth="{{ depth }}" data-is-last="{{ is_last }}">
+    <div class="tree-node">
+        <div class="tree-lines" data-depth="{{ depth }}"></div>
+        <button class="tree-toggle {% if not children %}tree-toggle-hidden{% endif %}" 
+                data-tree-toggle="{{ item.id }}">
+            {% if children %}▼{% endif %}
+        </button>
+        <a href="{{ detail_url }}" class="tree-name">{{ item_name }}</a>
+        <span class="tree-info">{{ item_count }} book{{ 's' if item_count != 1 }}</span>
+        <a href="{{ detail_url }}" class="button button-small button-secondary">View</a>
+    </div>
+    {% if children %}
+    <ul class="tree-children" data-tree-children="{{ item.id }}">
+        {% for child in children %}
+            {% set child_detail_url = url_for(endpoint, id=child.id) %}
+            {{ render_tree_item(child, child.name, child.works|length, child_detail_url, child.children, endpoint, loop.last, depth + 1) }}
+        {% endfor %}
+    </ul>
+    {% endif %}
+</li>
+{% endmacro %}
+
+{% macro render_tree(items, item_name_attr, item_count_attr, endpoint) %}
+<div class="tree-container">
+    <ul class="tree-root">
+        {% for item in items %}
+            {% set item_name = item[item_name_attr] %}
+            {% if item_count_attr == 'works' %}
+                {% set item_count = item.works|length %}
+            {% else %}
+                {% set item_count = item[item_count_attr] %}
+            {% endif %}
+            {% set detail_url = url_for(endpoint, id=item.id) %}
+            {{ render_tree_item(item, item_name, item_count, detail_url, item.children, endpoint, loop.last, 0) }}
+        {% endfor %}
+    </ul>
+</div>
+{% endmacro %}

@@ -3,73 +3,79 @@
 {% block title %}Books - {{ super() }}{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Books</h1>
-    <a href="{{ url_for('books.book_add') }}" class="btn btn-success">Add New Book</a>
+<div class="page-header">
+    <h1 class="page-title">Books</h1>
+    <a href="{{ url_for('books.book_add') }}" class="button button-primary">Add New Book</a>
 </div>
 
 {% if books %}
-<div class="table-responsive">
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>ISBN</th>
-                <th>Authors</th>
-                <th>Tags</th>
-                <th>Location</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for book in books %}
-            <tr>
-                <td><a href="{{ url_for('books.book_detail', id=book.id) }}">{{ book.title }}</a></td>
-                <td>{{ book.isbn }}</td>
-                <td>
-                    {% for author in book.authors %}
-                    <a href="{{ url_for('authors.author_detail', id=author.id) }}" class="badge bg-primary text-decoration-none">{{ author.name|truncate(20) }}</a>
-                    {% endfor %}
-                </td>
-                <td>
-                    {% for tag in book.tags %}
-                    <span class="badge bg-secondary">{{ tag.label }}</span>
-                    {% endfor %}
-                </td>
-                <td>{{ book.location.name }}</td>
-                <td>
-                    <a href="{{ url_for('books.book_edit', id=book.id) }}" class="btn btn-sm btn-primary">Edit</a>
-                    <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ book.id }}">Delete</button>
-                    
-                    <!-- Delete Modal -->
-                    <div class="modal fade" id="deleteModal{{ book.id }}" tabindex="-1" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Confirm Delete</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body">
-                                    Are you sure you want to delete "{{ book.title }}"?
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                    <form action="{{ url_for('books.book_delete', id=book.id) }}" method="post">
-                                        <button type="submit" class="btn btn-danger">Delete</button>
-                                    </form>
+<div class="works-section">
+    <h2 class="section-title">All Books</h2>
+    <div class="book-grid">
+        {% for book in books %}
+            {% if book.copies %}
+                {% for copy in book.copies[:1] %}
+                    {{ book_card(copy) }}
+                {% endfor %}
+            {% else %}
+                <div class="no-copy-card">
+                    <div class="book-card-inner">
+                        {% if book.cover_url %}
+                            <img src="{{ book.cover_url }}" class="detail-cover" alt="{{ book.title }}">
+                        {% else %}
+                            <svg class="detail-cover-placeholder" viewBox="0 0 100 150" fill="none">
+                                <rect width="100" height="150" fill="var(--bg-hover)"/>
+                                <rect x="10" y="20" width="80" height="2" fill="var(--border-color)"/>
+                                <rect x="10" y="35" width="60" height="2" fill="var(--border-color)"/>
+                                <rect x="10" y="50" width="70" height="2" fill="var(--border-color)"/>
+                                <path d="M30 80 L50 100 L70 80" stroke="var(--border-color)" stroke-width="2" fill="none"/>
+                            </svg>
+                        {% endif %}
+                        <div class="book-info-overlay">
+                            <h4 class="book-title">{{ book.title }}</h4>
+                            <div class="book-authors">
+                                {% for author in book.authors %}
+                                    <span class="author-name">{{ author.primary_name }}</span>{% if not loop.last %}, {% endif %}
+                                    {% endfor %}
+                            </div>
+                            {% if book.description %}
+                                <p class="book-description">{{ book.description }}</p>
+                            {% endif %}
+                            {% if book.copies %}
+                            <div class="work-info">
+                                <p class="book-location">{{ book.copies|length }} cop{{ 'ies' if book.copies|length != 1 }}</p>
+                            </div>
+                            {% endif %}
+                            {% if book.isbn %}
+                            <div class="work-info">
+                                <p class="book-isbn">ISBN: {{ book.isbn }}</p>
+                            </div>
+                            {% endif %}
+                            {% if book.location %}
+                            <div class="work-info">
+                                <p class="book-location">{{ book.location.name }}</p>
+                            </div>
+                            {% endif %}
+                            {% if book.tags %}
+                            <div class="work-info">
+                                <p class="book-location">Tags:</p>
+                                <div class="info-badges">
+                                    {% for tag in book.tags %}
+                                        <a href="{{ url_for('tags.tag_detail', id=tag.id) }}" class="info-badge info-badge-secondary">{{ tag.label }}</a>
+                                    {% endfor %}
                                 </div>
                             </div>
+                            {% endif %}
                         </div>
                     </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
 </div>
 {% else %}
-<div class="alert alert-info">
-    No books found. <a href="{{ url_for('books.book_add') }}">Add your first book</a>.
+<div class="alert-info">
+    No books found. <a href="{{ url_for('books.book_add') }}" class="alert-link">Add your first book</a>.
 </div>
 {% endif %}
 {% endblock %}

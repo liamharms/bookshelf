@@ -3,51 +3,52 @@
 {% block title %}{{ title }} - {{ super() }}{% endblock %}
 
 {% block content %}
-<h1>{{ title }}</h1>
+<div class="form-container">
+    <h1 class="form-title">{{ title }}</h1>
 
-<form method="POST" class="mt-4">
-    {{ form.hidden_tag() }}
-    
-    <!-- Name -->
-    <div class="mb-3">
-        {{ form.name.label(class="form-label") }}
-        {{ form.name(class="form-control", rows=1) }}
-    </div>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        
+        <!-- Name -->
+        <div class="form-group">
+            {{ form.name.label(class="form-label") }}
+            {{ form.name(class="form-control") }}
+        </div>
 
-    <!-- Bio -->
-    <div class="mb-3">
-        {{ form.bio.label(class="form-label") }}
-        {{ form.bio(class="form-control", rows=5) }}
-    </div>
-    
-    <!-- Alt names -->
-    <div class="mb-3">
-        {{ form.alt_names.label(class="form-label") }}
-        <div class="alt-name-container" id="alt-name-container">
-            {% for alt_name_form in form.alt_names %}
-                <div class="alt-name-field" data-index="{{ loop.index0 }}">
-                    {{ alt_name_form(class="form-control", placeholder="Alternative Name") }}
-                    <button type="button" class="btn btn-danger delete-name" onclick="removeName(this)">Delete</button>
-                </div>
-            {% endfor %}
-
-            {% if form.alt_names|length == 0 %}
-                <div class="no-alt-names" id="no-alt-names-message">No alternative names added yet. Click "Add Name" to add one.</div>
-            {% endif %}
+        <!-- Bio -->
+        <div class="form-group">
+            {{ form.bio.label(class="form-label") }}
+            {{ form.bio(class="form-control", rows=5) }}
         </div>
         
-        <button type="button" class="btn btn-secondary" onclick="addName()">Add Name</button>
-    </div>
+        <!-- Alt names -->
+        <div class="form-group">
+            {{ form.alt_names.label(class="form-label") }}
+            <div class="alt-name-container" id="alt-name-container">
+                {% for alt_name_form in form.alt_names %}
+                    <div class="alt-name-field" data-index="{{ loop.index0 }}">
+                        {{ alt_name_form(class="form-control", placeholder="Alternative Name") }}
+                        <button type="button" class="button button-small button-danger delete-name" onclick="removeName(this)">Delete</button>
+                    </div>
+                {% endfor %}
 
-    <!-- Submit -->
-    <div class="mb-3">
-        {{ form.submit(class="btn btn-primary") }}
-        <a href="{{ url_for('authors.author_list') }}" class="btn btn-secondary">Cancel</a>
-    </div>
-</form>
+                {% if form.alt_names|length == 0 %}
+                    <div class="no-alt-names" id="no-alt-names-message">No alternative names added yet. Click "Add Name" to add one.</div>
+                {% endif %}
+            </div>
+            
+            <button type="button" class="button button-secondary" onclick="addName()">Add Name</button>
+        </div>
+
+        <!-- Submit -->
+        <div class="form-actions">
+            {{ form.submit(class="button button-primary") }}
+            <a href="{{ url_for('authors.author_list') }}" class="button button-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
 
 <script>
-
 function addName() {
     const container = document.getElementById('alt-name-container');
     const index = container.children.length;
@@ -56,16 +57,30 @@ function addName() {
     newField.setAttribute('data-index', index);
     newField.innerHTML = `
         <input type="text" name="alt_names-${index}" class="form-control" placeholder="Alternative Name">
-        <button type="button" class="btn btn-danger delete-name" onclick="removeName(this)">Delete</button>
+        <button type="button" class="button button-small button-danger delete-name" onclick="removeName(this)">Delete</button>
     `;
     container.appendChild(newField);
+    
+    // Hide the "no alt names" message if it exists
+    const noAltNamesMessage = document.getElementById('no-alt-names-message');
+    if (noAltNamesMessage) {
+        noAltNamesMessage.style.display = 'none';
+    }
 }
 
 function removeName(button) {
     const altNameField = button.closest('.alt-name-field');
     altNameField.remove();
+    
+    // Show the "no alt names" message if there are no more fields
+    const container = document.getElementById('alt-name-container');
+    const altNameFields = container.querySelectorAll('.alt-name-field');
+    const noAltNamesMessage = document.getElementById('no-alt-names-message');
+    
+    if (altNameFields.length === 0 && noAltNamesMessage) {
+        noAltNamesMessage.style.display = 'block';
+    }
 }
-
 </script>
 
 {% endblock %}

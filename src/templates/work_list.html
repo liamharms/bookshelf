@@ -1,54 +1,167 @@
 {% extends "base.html" %}
+{% from "macros.html" import work_card %}
+
+{% block title %}Works - {{ super() }}{% endblock %}
 
 {% block content %}
-
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Works</h1>
+<div class="page-header">
+    <h1 class="page-title">Works</h1>
 </div>
 
-<!-- Search -->
-<form action="{{ url_for('main.search_page') }}" method="GET" class="mb-4">
-    <div class="input-group">
-        <input type="text" name="q" class="form-control" placeholder="Search works..." aria-label="Search">
-        <!-- <button class="btn btn-light" type="submit">
-            <i class="fas fa-search"></i>
-        </button> -->
+    <!-- Dynamic Search -->
+<div class="search-form">
+    <div class="search-container">
+        <input type="text" id="worksSearchInput" class="search-input" placeholder="Search works by title, author, ISBN..." aria-label="Search">
+        <button class="search-button" type="button">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+            </svg>
+        </button>
     </div>
-</form>
+</div>
 
+<!-- Loading indicator -->
+<div id="worksLoadingIndicator" class="loading-indicator" style="display: none;">
+    <div class="loading-spinner"></div>
+    <span>Searching...</span>
+</div>
+
+<!-- Results count -->
+<div id="worksResultsCount" class="results-count" style="display: none;"></div>
+
+<div id="worksResultsContainer">
 {% if works %}
-<div class="table-responsive">
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>ISBN</th>
-                <th>Author(s)</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for work in works %}
-            <tr>
-                <td><a href="{{ url_for('books.copy_detail', id=copy.id) }}">{{ copy.work.title }}</a></td>
-                <td>{{ work.isbn.name }}</td>
-                <td>
-                    {% for author in copy.work.authors %}
-                    <a href="{{ url_for('authors.author_detail', id=author.id) }}" class="badge bg-primary text-decoration-none">{{ author.primary_name|truncate(20) }}</a>
-                    {% endfor %}
-                </td>
-                <td>
-                    <a href="{{ url_for('books.copy_detail', id=copy.id) }}" class="btn btn-sm btn-primary">View</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="works-section">
+    <h2 class="section-title">All Works</h2>
+    <div class="book-grid" id="originalWorksGrid">
+        {% for work in works %}
+            {{ work_card(work) }}
+        {% endfor %}
+    </div>
 </div>
 {% else %}
-<div class="alert alert-info">
-    No works found. <a href="{{ url_for('books.work_add') }}">Add your first work</a>.
+<div class="alert-info">
+    No works found. <a href="{{ url_for('books.work_add') }}" class="alert-link">Add your first work</a>.
 </div>
 {% endif %}
+</div>
+{% endblock %}
 
+{% block scripts %}
+<script>
+    let worksSearchTimeout;
+    const worksSearchInput = document.getElementById('worksSearchInput');
+    const worksResultsContainer = document.getElementById('worksResultsContainer');
+    const worksLoadingIndicator = document.getElementById('worksLoadingIndicator');
+    const worksResultsCount = document.getElementById('worksResultsCount');
+    const originalWorksGrid = document.getElementById('originalWorksGrid');
+    let originalWorksHtml = originalWorksGrid ? originalWorksGrid.innerHTML : '';
+
+    function performWorksSearch(query) {
+        if (query.trim() === '') {
+            worksResultsContainer.innerHTML = originalWorksGrid ? 
+                `<div class="works-section">
+                    <h2 class="section-title">All Works</h2>
+                    <div class="book-grid">${originalWorksHtml}</div>
+                </div>` : 
+                `<div class="alert-info">
+                    No works found. <a href="/books/works/add" class="alert-link">Add your first work</a>.
+                </div>`;
+            worksResultsCount.style.display = 'none';
+            return;
+        }
+        
+        worksLoadingIndicator.style.display = 'flex';
+        
+        fetch(`/api/search/works?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                displayWorksResults(data.works, query);
+            })
+            .catch(error => {
+                console.error('Works search error:', error);
+                worksResultsContainer.innerHTML = `
+                    <div class="alert-error">
+                        <p>An error occurred while searching. Please try again.</p>
+                    </div>
+                `;
+            })
+            .finally(() => {
+                worksLoadingIndicator.style.display = 'none';
+            });
+    }
+
+    function displayWorksResults(works, query) {
+        const count = works.length;
+        
+        if (count > 0) {
+            worksResultsCount.innerHTML = `Found ${count} work${count !== 1 ? 's' : ''}`;
+            worksResultsCount.style.display = 'block';
+        } else {
+            worksResultsCount.style.display = 'none';
+        }
+
+        if (count === 0) {
+            worksResultsContainer.innerHTML = `
+                <div class="works-section">
+                    <h2 class="section-title">Search Results</h2>
+                    <div class="alert-info">
+                        No works found matching "${query}".
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '<div class="works-section"><h2 class="section-title">Search Results</h2><div class="book-grid">';
+        works.forEach(work => {
+            const authors = work.authors && work.authors.length > 0 ? 
+                work.authors.map(a => highlightText(a, query)).join(', ') : '';
+            const title = highlightText(work.title || '', query);
+            const isbn = work.isbn ? highlightText(String(work.isbn), query) : '';
+            
+            html += `
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="card-title">
+                            <a href="/books/${work.id}">${title}</a>
+                        </h3>
+                        <div class="card-text">
+                            ${authors ? `<p><strong>Authors:</strong> ${authors}</p>` : ''}
+                            ${isbn ? `<p><strong>ISBN:</strong> ${isbn}</p>` : ''}
+                            ${work.copies_count ? `<p><strong>Copies:</strong> ${work.copies_count}</p>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div></div>';
+
+        worksResultsContainer.innerHTML = html;
+    }
+
+    function highlightText(text, query) {
+        if (!text || !query || typeof text !== 'string') return text || '';
+        
+        const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+        return text.replace(regex, '<span class="highlight">$1</span>');
+    }
+
+    function escapeRegex(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    worksSearchInput.addEventListener('input', function() {
+        const query = this.value;
+        
+        clearTimeout(worksSearchTimeout);
+        
+        worksSearchTimeout = setTimeout(() => {
+            performWorksSearch(query);
+        }, 300);
+    });
+
+    worksSearchInput.focus();
+</script>
 {% endblock %}
