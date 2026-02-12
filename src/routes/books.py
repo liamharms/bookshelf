@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask_login import login_required, current_user
 from models import db
 from models.models import Work, Copy, Author, AuthorName, Tag, Location, User
 from forms.forms import WorkForm, CopyForm, BookForm
@@ -9,7 +10,8 @@ books_bp = Blueprint('books', __name__)
 @books_bp.route('/')
 def books():
     works = db.session.query(Work).all()
-    return render_template('books.html', works=works)
+    copies = db.session.query(Copy).all()
+    return render_template('books.html', works=works, copies=copies)
 
 # Works
 @books_bp.route('/works')
@@ -44,6 +46,7 @@ def copy_detail(id):
 
 # Add a new book
 @books_bp.route('/add', methods=['GET', 'POST'])
+@login_required
 def book_add():
     form = BookForm()
         
@@ -62,6 +65,7 @@ def book_add():
 
 # Add a work
 @books_bp.route('/works/add', methods=['GET', 'POST'])
+@login_required
 def work_add(isbn=None):
     form = WorkForm()
     form.authors.choices = [(a.id, a.primary_name) for a in db.session.query(Author).all()]
@@ -96,6 +100,7 @@ def work_add(isbn=None):
 # Add a copy
 @books_bp.route('/copies/add', methods=['GET', 'POST'])
 @books_bp.route('/copies/add/<int:work_id>', methods=['GET', 'POST'])
+@login_required
 def copy_add(work_id=None):
     work = db.session.query(Work).get(work_id)
     form = CopyForm()
@@ -125,6 +130,7 @@ def copy_add(work_id=None):
 
 # Edit work
 @books_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
 def work_edit(id):
     work = db.session.query(Work).get(id)
     form = WorkForm(obj=work)
@@ -157,6 +163,7 @@ def work_edit(id):
 
 # Edit copy
 @books_bp.route('/<int:work_id>/copies/<int:copy_id>/edit', methods=['GET', 'POST'])
+@login_required
 def copy_edit(work_id, copy_id):
     work = Work.query.get_or_404(work_id)
     copy = Copy.query.get_or_404(copy_id)
@@ -180,6 +187,7 @@ def copy_edit(work_id, copy_id):
 
 # Delete work
 @books_bp.route('/<int:id>/delete', methods=['POST'])
+@login_required
 def work_delete(id):
     work = db.session.query(Work).get(id)
     db.session.delete(work)
@@ -189,6 +197,7 @@ def work_delete(id):
 
 # Delete copy
 @books_bp.route('/copies/<int:id>/delete', methods=['POST'])
+@login_required
 def copy_delete(id):
     copy = db.session.query(Copy).get(id)
     work_id = copy.work_id

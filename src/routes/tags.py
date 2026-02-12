@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask_login import login_required
 from models import db
 from models.models import Tag
 from forms.forms import TagForm
@@ -18,6 +19,7 @@ def tag_detail(id):
 
 # Add Tag
 @tags_bp.route('/add', methods=['GET', 'POST'])
+@login_required
 def tag_add():
     form = TagForm()
     form.parent.choices = [(0, '-none-')] + [(tag.id, tag.label) for tag in db.session.query(Tag).all()]
@@ -40,6 +42,7 @@ def tag_add():
 
 # Edit Tag
 @tags_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
 def tag_edit(id):
     tag = db.session.query(Tag).get(id)
     form = TagForm(obj=tag)
@@ -65,6 +68,7 @@ def tag_edit(id):
 
 # Delete Tag
 @tags_bp.route('/<int:id>/delete', methods=['POST'])
+@login_required
 def tag_delete(id):
     tag = db.session.query(Tag).get(id)
     db.session.delete(tag)

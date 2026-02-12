@@ -29,7 +29,7 @@ db.init_app(app)
 # Init flask_login
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login'
+login_manager.login_view = 'auth.login'
 login_manager.login_message = 'Log in to access this page.'
 
 # User loader
@@ -50,6 +50,7 @@ from routes.tags import tags_bp
 from routes.locations import locations_bp
 from routes.users import users_bp
 from routes.api import api_bp
+from routes.auth import auth_bp
 
 app.register_blueprint(main_bp)
 app.register_blueprint(books_bp, url_prefix='/books')
@@ -58,6 +59,7 @@ app.register_blueprint(tags_bp, url_prefix='/tags')
 app.register_blueprint(locations_bp, url_prefix='/locations')
 app.register_blueprint(users_bp, url_prefix='/users')
 app.register_blueprint(api_bp, url_prefix='/api')
+app.register_blueprint(auth_bp)
 
 
 if __name__ == '__main__':

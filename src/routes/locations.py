@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask_login import login_required
 from models import db
 from models.models import Location
 from forms.forms import LocationForm
@@ -33,6 +34,7 @@ def location_detail(id):
 
 # Add Location
 @locations_bp.route('/add', methods=['GET', 'POST'])
+@login_required
 def location_add():
     parent_id = request.args.get('parent_id', type=int)
     form = LocationForm()
@@ -59,6 +61,7 @@ def location_add():
 
 # Edit location
 @locations_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
 def location_edit(id):
     location = db.session.query(Location).get(id)
     form = LocationForm(obj=location)
@@ -86,6 +89,7 @@ def location_edit(id):
 
 # Delete location
 @locations_bp.route('/<int:id>/delete', methods=['GET', 'POST'])
+@login_required
 def location_delete(id):
     location = db.session.query(Location).get(id)
     db.session.delete(location)

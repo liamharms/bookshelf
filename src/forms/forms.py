@@ -1,7 +1,8 @@
 from flask_wtf import FlaskForm
-from wtforms import FieldList, StringField, TextAreaField, SelectMultipleField, SubmitField, SelectField
-from wtforms.validators import DataRequired, Length, Optional
+from wtforms import FieldList, StringField, TextAreaField, SelectMultipleField, SubmitField, SelectField, BooleanField, PasswordField
+from wtforms.validators import DataRequired, Length, Optional, EqualTo, Email, ValidationError
 from forms.fromai import LocationTreeWidget
+from models.models import User
 
 class BookForm(FlaskForm):
     title = StringField('Title')
@@ -50,3 +51,27 @@ class UserForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired()])
     notes = TextAreaField('Notes')
     submit = SubmitField('Submit')
+
+class LoginForm(FlaskForm):
+    email = StringField('Email', validators=[DataRequired(), Email(), Length(max=120)])
+    password = PasswordField('Password', validators=[DataRequired()])
+    remember_me = BooleanField('Remember Me')
+    submit = SubmitField('Login')
+
+class RegistrationForm(FlaskForm):
+    name = StringField('Name', validators=[DataRequired(), Length(min=3, max=80)])
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    password = PasswordField('Password', validators=[DataRequired(), Length(min=8)])
+    confirm_password = PasswordField('Confirm Password', 
+                                   validators=[DataRequired(), EqualTo('password', message='Passwords must match')])
+    submit = SubmitField('Register')
+
+    def validate_name(self, name):
+        user = User.query.filter_by(name=name.data).first()
+        if user:
+            raise ValidationError('Name already exists. Please choose a different one.')
+
+    def validate_email(self, email):
+        user = User.query.filter_by(email=email.data).first()
+        if user:
+            raise ValidationError('Email already registered. Please choose a different one.')

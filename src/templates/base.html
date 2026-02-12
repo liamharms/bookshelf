@@ -27,21 +27,22 @@
             <a href="{{ url_for('tags.tag_list') }}" class="nav-link">Tags</a>
             <a href="{{ url_for('locations.location_list') }}" class="nav-link">Locations</a>
             {% if current_user.is_authenticated and current_user.is_admin %}
-            <a href="{{ url_for('users.users') }}" class="nav-link">Users</a>
+            <a href="{{ url_for('users.user_list') }}" class="nav-link">Users</a>
             {% endif %}
         </nav>
         
         <div class="sidebar-footer">
             {% if current_user.is_authenticated %}
-            <a href="" class="profile-button">
+            <a href="{{ url_for('auth.logout') }}" class="profile-button" title="Logout">
                 <svg class="profile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
                 </svg>
-                <span>{{ current_user.username }}</span>
+                <span>{{ current_user.name }}</span>
             </a>
             {% else %}
-            <a href="" class="profile-button">
+            <a href="{{ url_for('auth.login') }}" class="profile-button">
                 <svg class="profile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
                     <polyline points="10 17 15 12 10 7"></polyline>
@@ -75,18 +76,31 @@
             <a href="{{ url_for('tags.tag_list') }}" class="mobile-nav-link">Tags</a>
             <a href="{{ url_for('locations.location_list') }}" class="mobile-nav-link">Locations</a>
             {% if current_user.is_authenticated and current_user.is_admin %}
-            <a href="{{ url_for('users.users') }}" class="mobile-nav-link">Users</a>
+            <a href="{{ url_for('users.user_list') }}" class="mobile-nav-link">Users</a>
             {% endif %}
             {% if current_user.is_authenticated %}
-            <a href="" class="mobile-nav-link">Profile</a>
+            <a href="{{ url_for('auth.logout') }}" class="mobile-nav-link">Logout ({{ current_user.name }})</a>
             {% else %}
-            <a href="" class="mobile-nav-link">Login</a>
+            <a href="{{ url_for('auth.login') }}" class="mobile-nav-link">Login</a>
             {% endif %}
         </nav>
     </div>
 
     <!-- Main Content -->
     <main class="main-content">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
         {% block content %}
         {% endblock %}
     </main>

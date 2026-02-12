@@ -1,14 +1,14 @@
 # TODO
 ## Search
-- [x] Search functionality in /search does not work (not updated after query)
-- [x] Give the following pages self-contained dynamic search functions (results update as query is typed)
-  - [x] Books
-    - [x] Main list
-    - [x] Works
-    - [x] Copies
-  - [x] Authors
-  - [x] Tags
-  - [x] Locations
+- [ ] Search functionality in /search does not work (not updated after query)
+- [ ] Give the following pages self-contained dynamic search functions (results update as query is typed)
+  - [ ] Books
+    - [ ] Main list
+    - [ ] Works
+    - [ ] Copies
+  - [ ] Authors
+  - [ ] Tags
+  - [ ] Locations
 
 ## Aesthetics
 - [ ] Indicate multiple copies in index and book pages with z effect

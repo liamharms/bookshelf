@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask_login import login_required
 from models import db
 from models.models import Author, AuthorName
 from forms.forms import AuthorForm
@@ -19,6 +20,7 @@ def author_detail(id):
 
 # Add author
 @authors_bp.route('/add', methods=['GET', 'POST'])
+@login_required
 def author_add():
     form = AuthorForm()
     
@@ -47,6 +49,7 @@ def author_add():
 
 # Edit author
 @authors_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
 def author_edit(id):
     author = db.session.query(Author).get(id)
     form = AuthorForm()
@@ -72,6 +75,7 @@ def author_edit(id):
     return render_template('author_form.html', form=form, title='Edit Author')
 
 @authors_bp.route('/<int:id>/delete', methods=['POST'])
+@login_required
 def author_delete(id):
     author = db.session.query(Author).get(id)
     db.session.delete(author)
